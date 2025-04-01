@@ -1,0 +1,57 @@
+Device Identity
+Device Unique Serial Code:048265
+Device Type:GENEActiv           
+Device Model:1.1                 
+Device Firmware Version:Ver4.08a date14Jul14
+Calibration Date:2018-01-09 15:17:02:000
+
+Device Capabilities
+Accelerometer Range:-8 to 8             
+Accelerometer Resolution:0.0039              
+Accelerometer Units:g                   
+Light Meter Range:0 to 5000           
+Light Meter Resolution:5                   
+Light Meter Units:lux                 
+Temperature Sensor Range:0 to 70             
+Temperature Sensor Resolution:0.1                 
+Temperature Sensor Units:deg. C              
+
+Configuration Info
+Measurement Frequency:100 Hz
+Measurement Period:168 Hours
+Start Time:2024-09-18 10:14:12:500
+Time Zone:GMT +01:00
+
+Trial Info
+Study Centre:Marvin              
+Study Code:                    
+Investigator ID:                    
+Exercise Type:                    
+Config Operator ID:                    
+Config Time:2024-09-18 10:13:47:398
+Config Notes:
+Extract Operator ID:
+Extract Time:2024-09-18 10:15:39:756
+Extract Notes:(device clock drift 0.005s)
+
+Subject Info
+Device Location Code:
+Subject Code:                    
+Date of Birth:1900-01-01
+Sex:
+Height:
+Weight:
+Handedness Code:
+Subject Notes:                                                                                                    
+
+Calibration Data
+x gain:25211
+x offset:-33
+y gain:25165
+y offset:-983
+z gain:24925
+z offset:-354
+Volts:48
+Lux:911
+
+

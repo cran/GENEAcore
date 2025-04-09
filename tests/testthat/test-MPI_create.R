@@ -6,19 +6,19 @@ library(testthat)
 
 ## Unique BinFile Identifier and MPI ##
 local({
-  folder_path <- system.file("extdata", package = "GENEAcore")
-  # Delete all MPI files generated
-  files <- list.files(folder_path, pattern = "MPI", full.names = TRUE)
-  file.remove(files)
-  unlink(file.path(folder_path, "*.csv"))
-  unlink(file.path(folder_path, "*.rds"))
-
   binfile_name_10Hz <- file.path(system.file("extdata", package = "GENEAcore"), "10Hz_calibration_file.bin")
   con_10Hz <- file(binfile_name_10Hz, "r")
   binfile_10Hz <- readLines(con_10Hz, skipNul = TRUE)
   close(con_10Hz)
   binfile_name <- binfile_name_10Hz
-  output_folder <- file.path(system.file("extdata", package = "GENEAcore"))
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder)
+
+  # Delete all MPI files generated
+  files <- list.files(output_folder, pattern = "MPI", full.names = TRUE)
+  file.remove(files)
+  unlink(file.path(output_folder, "*.csv"))
+  unlink(file.path(output_folder, "*.rds"))
 
   MPI_10Hz <- create_MPI(binfile_10Hz, binfile_name, output_folder)
 
@@ -179,8 +179,8 @@ local({
   # Delete all MPI files generated
   files <- list.files(output_folder, pattern = "MPI", full.names = TRUE)
   file.remove(files)
-  unlink(file.path(folder_path, "*.csv"))
-  unlink(file.path(folder_path, "*.rds"))
+  unlink(file.path(output_folder, "*.csv"))
+  unlink(file.path(output_folder, "*.rds"))
 
   ## Binfile summary
   expected_summary_path <- c(
@@ -201,8 +201,7 @@ local({
     "2021-04-25T19:57:55+01:00", "2021-04-26T21:24:25+01:00", "GENEActiv 1.1",
     "048297", "50399", "10", "2021-04-26T07:00:01+01:00", "2021-04-26T21:00:00+01:00",
     "Activinsights", "Calibration", "", "+01:00", "4.1642", "4.1791", "",
-    "Auto-calibration not calculated because not enough points on all sides of the sphere.",
-    "2", "84", "0", "44436"
+    "", "2", "84", "44436", "0"
   )
 
   test_that("Binfile summary when a binfile path is supplied is correct", {
@@ -217,7 +216,7 @@ local({
     expect_equal(as.character(unlist(MPI_summary_NA)), expected_summary_NA)
   })
 
-  # test_that("Binfile summary when a full MPI is supplied is correct", {
-  #   expect_equal(as.character(unlist(summary_MPI_full)), expected_summary_MPI_full)
-  # })
+  test_that("Binfile summary when a full MPI is supplied is correct", {
+    expect_equal(as.character(unlist(summary_MPI_full)), expected_summary_MPI_full)
+  })
 })

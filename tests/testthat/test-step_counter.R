@@ -5,7 +5,8 @@ local({
 
   ## 50Hz 1.2
   binfile_path_50 <- file.path(folder_path, "100650Hz_file.bin")
-  output_folder <- file.path(system.file("extdata", package = "GENEAcore"))
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder)
 
   con <- file(binfile_path_50, "r")
   binfile_50 <- readLines(con, skipNul = TRUE)

@@ -22,7 +22,8 @@ local({
     rm(afile)
   }
 
-  output_folder <- file.path(system.file("extdata", package = "GENEAcore"))
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder)
   downsampled_binfile <- sample_binfile(binfile, binfile_path, output_folder)
   rawdata <- sample_binfile(binfile, binfile_path, output_folder, downsample = FALSE)
 
@@ -62,7 +63,8 @@ local({
     rm(afile)
   }
 
-  output_folder <- file.path(system.file("extdata", package = "GENEAcore"))
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder)
   downsampled_binfile <- sample_binfile(binfile, binfile_path, output_folder)
   rawdata <- sample_binfile(binfile, binfile_path, output_folder, downsample = FALSE)
 
@@ -102,7 +104,8 @@ local({
     rm(afile)
   }
 
-  output_folder <- file.path(system.file("extdata", package = "GENEAcore"))
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder)
   downsampled_binfile <- sample_binfile(binfile, binfile_path, output_folder)
   rawdata <- sample_binfile(binfile, binfile_path, output_folder, downsample = FALSE)
 

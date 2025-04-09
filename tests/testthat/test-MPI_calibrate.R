@@ -118,7 +118,8 @@ local({
   # Test calibration against GENEAread
 
   binfile_path <- file.path(system.file("extdata", package = "GENEAcore"), "10Hz_calibration_file.bin")
-  output_folder <- file.path(system.file("extdata", package = "GENEAcore"))
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder)
 
   con <- file(binfile_path, "r")
   binfile <- readLines(con, skipNul = TRUE)

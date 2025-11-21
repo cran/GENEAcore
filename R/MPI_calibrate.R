@@ -19,14 +19,17 @@
 #' @export
 #' @importFrom stats lm.wfit
 #' @examples
-#' binfile_path <- system.file("inst/extdata/10Hz_calibration_file.bin", package = "GENEAcore")
-#' output_folder <- "."
+#' binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
+#' output_folder <- tempdir()
 #' con <- file(binfile_path, "r")
 #' binfile <- readLines(con, skipNul = TRUE)
 #' close(con)
 #' MPI <- create_MPI(binfile, binfile_path, output_folder)
 #' nonmovement_list <- detect_nonmovement(binfile, binfile_path, output_folder)
-#' MPI <- calc_autocalparams(binfile, binfile_path, output_folder, nonmovement_list$sphere_points)
+#' MPI <- calc_autocalparams(
+#'   binfile, binfile_path, output_folder,
+#'   nonmovement_list$non_movement$sphere_points
+#' )
 calc_autocalparams <- function(binfile,
                                binfile_path,
                                output_folder,
@@ -142,10 +145,10 @@ calc_autocalparams <- function(binfile,
         auto_calibration <- list(
           scale = scale,
           offset = offset,
-          temperatureoffset = tempoffset,
+          temperature_offset = tempoffset,
           error = cal_error_auto,
-          lightdenominator = factory_calibration$lightdenominator,
-          lightnumerator = factory_calibration$lightnumerator,
+          light_denominator = factory_calibration$light_denominator,
+          light_numerator = factory_calibration$light_numerator,
           iter = iter
         )
 
@@ -154,7 +157,12 @@ calc_autocalparams <- function(binfile,
           MPI$file_history,
           paste0(
             substr(Sys.time(), 0, 23),
-            " auto-calibration calculated successfully"
+            " auto-calibration calculated successfully ",
+            "(parameters: ",
+            "use_temp = ", use_temp, ", ",
+            "spherecrit = ", spherecrit, ", ",
+            "maxiter = ", maxiter, ", ",
+            "tol = ", tol, ")"
           )
         )
         MPI$auto_calibration <- auto_calibration
@@ -188,7 +196,7 @@ calc_autocalparams <- function(binfile,
 #'
 #' @details Function to apply calibration to sensor-level data from a bin file.
 #' @param sensor_data Raw sensor-level data from a bin file in the form
-#' (x, y, z, light, button, temp).
+#' (x, y, z, Light, Button, Temp).
 #' @param cal_params Calibration parameters for acceleration and
 #' light from MPI.
 #' @param measurement_device Name of the measurement device used "GENEActiv 1.1"
@@ -201,30 +209,29 @@ calc_autocalparams <- function(binfile,
 #' cal_params <- list(
 #'   scale = c(1.015, 1.017, 1.027),
 #'   offset = c(0.00128, 0.0383, 0.0138),
-#'   temperatureoffset = c(0, 0, 0),
+#'   temperature_offset = c(0, 0, 0),
 #'   error = NA,
-#'   lightdenominator = 48,
-#'   lightnumerator = 911
+#'   light_denominator = 48,
+#'   light_numerator = 911
 #' )
 #'
 #' rawdata <- data.frame(
 #'   time = c(rep(1726650857, 5)),
-#'   x = c(0.2421875,0.24609375,0.25390625,0.24609375,0.23828125),
-#'   y = c(-0.04296875,-0.04687500,-0.03515625, -0.03125000,-0.04296875),
-#'   z = c(-0.9453125,-0.9453125, -0.9531250,-0.9531250,-0.9609375),
+#'   x = c(0.2421875, 0.24609375, 0.25390625, 0.24609375, 0.23828125),
+#'   y = c(-0.04296875, -0.04687500, -0.03515625, -0.03125000, -0.04296875),
+#'   z = c(-0.9453125, -0.9453125, -0.9531250, -0.9531250, -0.9609375),
 #'   light = c(rep(22, 5)),
 #'   button = c(rep(0, 5)),
 #'   temp = c(rep(21.3, 5)),
 #'   volts = c(rep(4.0896, 5))
 #' )
 #' calibrated <- apply_calibration(rawdata, cal_params, "GENEActiv 1.1")
-
 apply_calibration <- function(sensor_data,
                               cal_params,
                               measurement_device,
                               use_temp = TRUE) {
   # :DEV: - add checks that sensor_data & cal_params are in right format
-  min_sensor_data_cols <- c("x", "y", "z", "temp", "light")
+  min_sensor_data_cols <- c("x", "y", "z", "Temp", "Light")
   measurement_device_options <- c("GENEActiv 1.1", "GENEActiv 1.2")
   data_format_correct <- TRUE
 
@@ -234,7 +241,7 @@ apply_calibration <- function(sensor_data,
   }
 
   if (!all(min_sensor_data_cols %in% colnames(sensor_data))) {
-    warning("Sensor data must have columns x, y, z, temp and light.")
+    warning("Sensor data must have columns x, y, z, Temp and Light.")
     data_format_correct <- FALSE
   }
 
@@ -245,32 +252,32 @@ apply_calibration <- function(sensor_data,
       )
     } else {
       duptemp <- as.matrix(cbind(
-        sensor_data[, "temp"],
-        sensor_data[, "temp"],
-        sensor_data[, "temp"]
+        sensor_data[, "Temp"],
+        sensor_data[, "Temp"],
+        sensor_data[, "Temp"]
       ))
-      meantemp <- mean(sensor_data[, "temp"], na.rm = TRUE)
+      meantemp <- mean(sensor_data[, "Temp"], na.rm = TRUE)
       sensor_data[, c("x", "y", "z")] <- scale(as.matrix(sensor_data[, c("x", "y", "z")]),
         center = -cal_params$offset, scale = 1 / cal_params$scale
       ) +
-        scale(duptemp, center = rep(meantemp, 3), scale = 1 / cal_params$temperatureoffset)
+        scale(duptemp, center = rep(meantemp, 3), scale = 1 / cal_params$temperature_offset)
     }
 
     if (measurement_device == "GENEActiv 1.1") {
-      sensor_data[, "light"] <- sensor_data[, "light"] * cal_params$lightnumerator / cal_params$lightdenominator
+      sensor_data[, "Light"] <- sensor_data[, "Light"] * cal_params$light_numerator / cal_params$light_denominator
     } else {
-      sensor_data[, "light"] <- ifelse(sensor_data[, "light"] < 256,
-        sensor_data[, "light"],
-        ifelse(sensor_data[, "light"] < 512, (sensor_data[, "light"] - 128) * 2,
-          ifelse(sensor_data[, "light"] < 768, (sensor_data[, "light"] - 320) * 4,
-            ifelse(sensor_data[, "light"] < 1024, (sensor_data[, "light"] - 656) * 16,
+      sensor_data[, "Light"] <- ifelse(sensor_data[, "Light"] < 256,
+        sensor_data[, "Light"],
+        ifelse(sensor_data[, "Light"] < 512, (sensor_data[, "Light"] - 128) * 2,
+          ifelse(sensor_data[, "Light"] < 768, (sensor_data[, "Light"] - 320) * 4,
+            ifelse(sensor_data[, "Light"] < 1024, (sensor_data[, "Light"] - 656) * 16,
               5888
             )
           )
         )
       )
-      sensor_data[, "light"] <- sensor_data[, "light"] *
-        cal_params$lightnumerator / cal_params$lightdenominator
+      sensor_data[, "Light"] <- sensor_data[, "Light"] *
+        cal_params$light_numerator / cal_params$light_denominator
     }
   } else {
     warning("Input data not correctly formatted.")

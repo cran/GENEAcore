@@ -29,6 +29,17 @@ The R package GENEAcore provides functions and analytics to read in and summaris
 
 This vignette provides a general introduction on how to use GENEAcore.
 
+For a list of breaking changes when migrating from Version 1.0.1 to 1.1.x, please see the Breaking Changes vignette.
+```{r, eval = FALSE}
+vignette("breaking-changes", package = "GENEAcore")
+```
+
+For descriptions and units of all events and epochs measures, please see the Data Dictionary vignette.
+```{r, eval = FALSE}
+browseURL(system.file("extdata", "GENEAcore_Data_Dictionary_21Nov2025.pdf", package = "GENEAcore"))
+```
+
+
 ### ii. Install R and RStudio
 
 To begin, download and install [R](https://cran.r-project.org/). An introduction to the R environment can be found in the [R manual](https://cran.r-project.org/doc/manuals/r-release/R-intro.pdf), which will help familiarize users with its basics. We also recommend downloading and installing the IDE (integrated development environment) [RStudio](https://posit.co/products/open-source/rstudio/) after R has been installed. RStudio provides the user with more than the console to work with and gives the option of having a script, console, view of the R environment and file locations in one window. The list of tips on using RStudio can be found [here](https://posit.co/resources/cheatsheets/).
@@ -47,7 +58,7 @@ Whilst GENEAcore is in development, the easiest way to install the package is to
 # Note that R only uses / not \ when referring to a file/directory location
 install.packages("changepoint")
 install.packages("signal")
-install.packages("C:/path/to/GENEAcore_1.0.0.tar.gz", repos = NULL, type = "source")
+install.packages("C:/path/to/GENEAcore_1.1.1.tar.gz", repos = NULL, type = "source")
 ```
 
 Once the packages have been installed, load in the libraries:
@@ -55,6 +66,7 @@ Once the packages have been installed, load in the libraries:
 ```{r Loading in the GENEAcore library, eval = FALSE}
 library(GENEAcore)
 library(changepoint)
+library(signal)
 ```
 
 ## Using GENEAcore
@@ -88,7 +100,7 @@ geneacore(data_folder = "C:/path/to/datafolder")
 
 In outline, the optional parameters and their defaults are:
 
--   `CutTime24Hr` is the 24 hour time to split days up by. Defaults to **15:00** (3.00pm).
+-   `cut_time_24hr` is the 24 hour time to split days up by. Defaults to **15:00** (3.00pm).
 -   `output_epochs` specifies whether epochs should be created as an output. Defaults to **TRUE**. Else, FALSE.
 -   `epoch_duration` specifies duration to aggregate epochs by. This will be the duration of each epoch in the outputs. Defaults to **1** second.
 -   `output_events` specifies whether events should be created as an output. Defaults to **TRUE**. Else, FALSE.
@@ -102,7 +114,7 @@ A sample run with all parameters included will be:
 library(GENEAcore)
 geneacore(
   data_folder = "C:/path/to/datafolder",
-  CutTime24Hr = "15:00",
+  cut_time_24hr = "15:00",
   output_epochs = TRUE,
   epoch_duration = 600, # 10 minutes
   output_events = FALSE,
@@ -121,7 +133,7 @@ GENEAcore produces the following outputs for each .bin file processed:
 
 **MPI**
 
-The MPI (measurement period information) contains header information of the .bin file and meta data essential for downstream file processing and interpretation. The MPI also stores calibration, non-wear and transitions information.
+The MPI (measurement period information) contains header information of the .bin file and meta data essential for downstream file processing and interpretation. The MPI also stores calibration, non-movement and transitions information.
 
 **Downsampled data**
 
@@ -133,7 +145,7 @@ Epochs are a fixed duration aggregation of raw sensor data in SI units. The aggr
 
 **Events**
 
-Event are a variable duration aggregation of raw sensor data in SI units. The aggregates include a wide range of statistical processing with event durations determined by transitions identified in the MPI. The time of day defined in `CutTime24Hr` adds an additional transition point to mark the start and end of a day.
+Event are a variable duration aggregation of raw sensor data in SI units. The aggregates include a wide range of statistical processing with event durations determined by transitions identified in the MPI. The time of day defined in `cut_time_24hr` adds an additional transition point to mark the start of a day.
 
 The epochs or events can then be used for further analysis within R, e.g., classification of behaviours. It can also be exported as CSV `output_csv = TRUE` for post-processing outside of R.
 
@@ -205,7 +217,7 @@ The MPI is saved in your specified output folder as an RDS file. Make sure to us
 ### i. Sampling your files
 
 The `sample_binfile` function provides two functionalities: downsampling and raw sampling. Both functionalities allow you to sample a portion of the file between two specified timestamps, which are passed to the `start_time` and `end_time` parameters. If no start and end time are specified, the file is sampled from the beginning to the end of the file.
-The sampling output is a matrix with columns for timestamp, x, y, z, light, temperature, and voltage. In downsampling, measurements are taken at each whole second. In raw sampling, every measurement is included in the output (e.g., at 10Hz, there would be 10 measurements per second).
+The sampling output is a matrix with columns for timestamp, x, y, z, light, button, temperature, and voltage. The column headers are TimeUTC, x, y, z, Light, Button, Temp and Volts. In downsampling, measurements are taken at each whole second. In raw sampling, every measurement is included in the output (e.g., at 10Hz, there would be 10 measurements per second).
 
 **Downsampling** 
 
@@ -231,7 +243,9 @@ downsampled_measurements <- sample_binfile(binfile, binfile_path, output_folder,
 
 **Raw sampling**
 
-Raw sampling allows you to process all data points in your file by running the `sample_binfile()` function with the parameter `downsample = FALSE`. Raw sampling can be done on the entire file using the basic run or on a specific portion of the file by specifying the start and end times. The raw sample data is saved as an RDS file, with the start and end timestamps of the sampling period included in the filename.
+Raw sampling allows you to process all data points in your file by running the `sample_binfile()` function with the parameter `downsample = FALSE`. Raw sampling can be done on the entire file using the basic run or on a specific portion of the file by specifying the start and end times. 
+
+By default, raw sampled data is not stored. As a result, reprocessing the same dataset with altered parameters while maintaining the original `start_time` and `end_time` will trigger a new sampling operation. For improved efficiency, you can enable the raw sampled data to be saved by passing `save_raw = TRUE`. This allows subsequent calls to the sampling function for the same start and end times to load the pre-saved .rds file.
 
 ```{r Raw sampling a file default, eval = FALSE}
 # Simple run using default parameter values
@@ -244,7 +258,8 @@ raw_measurements <- sample_binfile(binfile, binfile_path, output_folder,
   start_time = NULL,
   end_time = NULL,
   downsample = FALSE,
-  output_csv = FALSE
+  output_csv = FALSE,
+  save_raw = FALSE
 )
 ```
 
@@ -275,7 +290,7 @@ The parameters for non-movement detection and auto calibration calculation can b
 # Detect non-movement
 MPI <- detect_nonmovement(binfile, binfile_path, output_folder,
   still_seconds = 120,
-  sd_threshold = 0.011,
+  sd_threshold = 0.013,
   temp_seconds = 240,
   border_seconds = 300,
   long_still_seconds = 120 * 60,
@@ -322,11 +337,11 @@ Alternatively, you can modify the minimum event duration, x, y or z changepoint 
 
 ```{r Detect transitions for event aggregation parameters, eval = FALSE}
 MPI <- detect_transitions(binfile, binfile_path, output_folder,
-  minimum_event_duration = 3,
-  x_cpt_penalty = 20,
-  y_cpt_penalty = 30,
-  z_cpt_penalty = 20,
-  CutTime24Hr = "15:00"
+  minimum_event_duration = 5,
+  x_cpt_penalty = 18,
+  y_cpt_penalty = 25,
+  z_cpt_penalty = 16,
+  cut_time_24hr = "15:00"
 )
 ```
 
@@ -361,32 +376,32 @@ calibrated_measures <- apply_degrees(
 To aggregate epochs or events, a series of steps must first be completed. Each step is detailed in its own section in this vignette.
 
 1. Detect Transitions (required for event aggregation only)
-2. Calculate Auto calibration Parameters
+2. Calculate Auto-calibration Parameters
 3. Sample Raw Data
 4. Apply Calibration Values
 5. Apply Additional Measures
 
-**Event Aggregation:** Pass the transitions as a parameter to the `aggregateEvents()` function. Note that event aggregation must be performed day by day due to the structure of transitions. Ensure you use the same CutTime24Hr when detecting transitions and when splitting the days during sampling. An example of day by day event aggregation is provided in the Appendix.
+**Event Aggregation:** Pass the transitions as a parameter to the `aggregate_events()` function. Note that event aggregation must be performed day by day due to the structure of transitions. Ensure you use the same `cut_time_24hr` when detecting transitions and when splitting the days during sampling. An example of day by day event aggregation is provided in the Appendix.
 
 ```{r Aggregating events, eval = FALSE}
-events_agg <- aggregateEvents(calibrated,
+events_agg <- aggregate_events(calibrated,
   measure = c("x", "y", "z", "AGSA"),
-  time = "timestamp",
+  time = "TimeUTC",
   sample_frequency = sample_frequency,
   events = events,
-  fun = function(x) c(mean = mean(x), sd = sd(x))
+  fun = function(x) c(Mean = mean(x), SD = sd(x))
 )
 ```
 
-**Epoch Aggregation:** Pass the desired epoch duration as a parameter to the `aggregateEpochs()` function. While epoch aggregation can be performed on the entire dataset, it may be computationally intensive for large datasets. We recommend splitting your data into manageable day chunks.
+**Epoch Aggregation:** Pass the desired epoch duration as a parameter to the `aggregate_epochs()` function. While epoch aggregation can be performed on the entire dataset, it may be computationally intensive for large datasets. We recommend splitting your data into manageable day chunks. End-of-day partial epochs will be removed from the final aggregation output.
 
 ```{r Aggregating epochs, eval = FALSE}
-epochs_agg <- aggregateEpochs(calibrated,
+epochs_agg <- aggregate_epochs(calibrated,
   duration = 1,
   measure = c("x", "y", "z", "AGSA", "ENMO"),
-  time = "timestamp",
+  time = "TimeUTC",
   sample_frequency = MPI$file_data[["MeasurementFrequency"]],
-  fun = function(x) c(mean = mean(x), sd = sd(x))
+  fun = function(x) c(Mean = mean(x), SD = sd(x))
 )
 ```
 
@@ -442,26 +457,29 @@ The following excerpt from the` geneacore()` function demonstrates how to determ
 
 ```{r Aggregating events day by day, eval = FALSE}
 # Prepare time borders of each day
-cut_time <- strptime(CutTime24Hr, format = "%H:%M")$hour
+cut_time <- strptime(cut_time_24hr, format = "%H:%M")$hour
 cut_time_shift <- (cut_time * 60 * 60) - MPI$file_data[["TimeOffset"]]
-first_day <- as.Date(as.POSIXct(MPI$file_info$firsttimestamp - cut_time_shift, origin = "1970-01-01"))
-last_day <- as.Date(as.POSIXct(MPI$file_info$lasttimestamp - cut_time_shift, origin = "1970-01-01"))
+first_day <- as.Date(as.POSIXct(MPI$file_info$first_time_UTC - cut_time_shift, origin = "1970-01-01"))
+last_day <- as.Date(as.POSIXct(MPI$file_info$last_time_UTC - cut_time_shift, origin = "1970-01-01"))
 
 # Generate start and end time for each day we need to process
 days_to_process <- seq(first_day, last_day, by = 1)
 date_range <- lapply(days_to_process, FUN = function(x) {
   c(
-    "start" = max(MPI$file_info$firsttimestamp, as.numeric(as.POSIXlt(x)) + cut_time_shift),
-    "end" = min(MPI$file_info$lasttimestamp, as.numeric(as.POSIXlt(x + 1)) + cut_time_shift)
+    "start" = max(MPI$file_info$first_time_UTC, as.numeric(as.POSIXlt(x)) + cut_time_shift),
+    "end" = min(MPI$file_info$last_time_UTC, as.numeric(as.POSIXlt(x + 1)) + cut_time_shift)
   )
 })
 date_range <- data.frame(t(sapply(date_range, c)))
+date_range$day <- rownames(date_range)
+date_range$length <- date_range$end - date_range$start
+# A valid day is at least 5 seconds long
+date_range <- date_range[date_range$length > 5, ]
 
 sample_frequency <- MPI$file_data[["MeasurementFrequency"]]
 events_list <- list()
-
 # Sample, calibrate and aggregate the data day-by-day
-for (day_number in 1:nrow(date_range)) {
+for (day_number in date_range$day[1]:date_range$day[nrow(date_range)]) {
   results <- sample_binfile(binfile, binfile_path, output_folder,
     start_time = date_range[day_number, 1],
     end_time = date_range[day_number, 2],
@@ -472,20 +490,28 @@ for (day_number in 1:nrow(date_range)) {
 
   calibrated <- apply_AGSA(calibrated)
 
-  day_transitions <- transitions[transitions$day == day_number, "index"]
+  day_transitions <- MPI$transitions[MPI$transitions$day == day_number, "index"]
   events <- data.frame(
     "start" = day_transitions[-length(day_transitions)],
-    "end" = floor(sample_frequency * (day_transitions[-1]))
+    "end" = floor(sample_frequency * (day_transitions[-1] - 1))
   )
+  if (length(day_transitions) == 1) {
+    events <- data.frame("start" = day_transitions, "end" = nrow(calibrated))
+  }
   if (nrow(events) > 1) {
     events$start[2:nrow(events)] <- events$end[-nrow(events)] + 1
   }
-  events_agg <- aggregateEvents(calibrated,
+  if ((nrow(calibrated) - events$end[length(events$end)]) > sample_frequency) {
+    events <- rbind(events, c(events$end[length(events$end)] + 1, nrow(calibrated)))
+  } else {
+    events$end[length(events$end)] <- nrow(calibrated)
+  }
+  events_agg <- aggregate_events(calibrated,
     measure = c("x", "y", "z", "AGSA"),
-    time = "timestamp",
+    time = "TimeUTC",
     sample_frequency = sample_frequency,
     events = events,
-    fun = function(x) c(mean = mean(x), sd = sd(x))
+    fun = function(x) c(Mean = mean(x), SD = sd(x))
   )
   events_list[[day_number]] <- events_agg
 }
@@ -493,3 +519,9 @@ for (day_number in 1:nrow(date_range)) {
 # Combine daily aggregated events into a single output
 events_df <- do.call(rbind, events_list)
 ```
+
+# Citation
+
+If you use **GENEAcore** in published work, please cite:
+
+Langford J., Chua J.Y., Long I., Williams A.C. and Hillsdon M. (2025) ‘Validation and optimisation of wearable accelerometer data pre-processing for digital measure implementation and development’, [Manuscript in preparation].

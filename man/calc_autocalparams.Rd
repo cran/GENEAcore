@@ -46,12 +46,15 @@ Function to calculate auto-calibration parameters from known
 still points from a bin file that create a unitary sphere.
 }
 \examples{
-binfile_path <- system.file("inst/extdata/10Hz_calibration_file.bin", package = "GENEAcore")
-output_folder <- "."
+binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
+output_folder <- tempdir()
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)
 close(con)
 MPI <- create_MPI(binfile, binfile_path, output_folder)
 nonmovement_list <- detect_nonmovement(binfile, binfile_path, output_folder)
-MPI <- calc_autocalparams(binfile, binfile_path, output_folder, nonmovement_list$sphere_points)
+MPI <- calc_autocalparams(
+  binfile, binfile_path, output_folder,
+  nonmovement_list$non_movement$sphere_points
+)
 }

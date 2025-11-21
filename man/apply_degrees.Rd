@@ -2,7 +2,7 @@
 % Please edit documentation in R/apply_measures.R
 \name{apply_degrees}
 \alias{apply_degrees}
-\title{Apply Rotation (degrees)}
+\title{Apply Rotation (Degrees)}
 \usage{
 apply_degrees(x)
 }
@@ -13,7 +13,7 @@ apply_degrees(x)
 Measure column appended to end of calibrated data frame.
 }
 \description{
-Apply Rotation (degrees)
+Apply Rotation (Degrees)
 }
 \examples{
 x <- c(0.14268, 0.21757, -0.529, -0.36383)

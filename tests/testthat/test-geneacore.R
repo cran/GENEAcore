@@ -29,7 +29,7 @@ local({
   if (length(existing_dirs) > 0) expect_true(all(result_dir == TRUE))
 
   # # Move bin files to temp dir for processing
-  bin_files <- c("10Hz_calibration_file.bin") # "One_page_bin_file.bin")
+  bin_files <- c("10Hz_calibration_file_20Nov25.bin")
   result <- lapply(list(bin_files), FUN = function(x) {
     file.copy(
       file.path(system.file("extdata", package = "GENEAcore"), x),
@@ -42,13 +42,14 @@ local({
     expect_warning(
       geneacore(
         data_folder = test_folder,
-        CutTime24Hr = "15:00",
+        cut_time_24hr = "15:00",
         output_epochs = TRUE,
         epoch_duration = 1,
         output_events = TRUE,
         output_csv = TRUE,
         output_steps = TRUE,
-        timer = TRUE
+        timer = TRUE,
+        summary = TRUE
       ),
       regexp = NA
     ) # Don't allow any warnings
@@ -56,5 +57,17 @@ local({
 
   # Confirm expected output files exist
   outputs <- list.files(test_folder, "\\.rds || \\.csv", recursive = TRUE, full.names = TRUE)
-  expect_true(length(outputs) == 9)
+  expect_true(length(outputs) == 8)
+
+  test_that("check_time_format gives warning when an invalid cut_time_24hr string is passed as an argument", {
+    expect_warning(
+      geneacore(
+        data_folder = test_folder,
+        cut_time_24hr = "12",
+        output_epochs = FALSE,
+        epoch_duration = 1,
+        output_events = FALSE
+      )
+    )
+  })
 })

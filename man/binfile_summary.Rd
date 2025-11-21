@@ -7,7 +7,7 @@
 binfile_summary(input, recursive = TRUE)
 }
 \arguments{
-\item{input}{Bin file path.}
+\item{input}{Bin file path - single bin file or folder of bin files.}
 
 \item{recursive}{TRUE applies the operation to all nested elements.}
 }

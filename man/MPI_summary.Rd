@@ -7,7 +7,7 @@
 MPI_summary(input, recursive = TRUE)
 }
 \arguments{
-\item{input}{MPI path.}
+\item{input}{MPI path - single MPI file or folder of MPI files.}
 
 \item{recursive}{TRUE applies the operation to all nested elements.}
 }

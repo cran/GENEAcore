@@ -21,18 +21,18 @@
 #' @export
 #' @importFrom stats na.omit
 #' @examples
-#' binfile_path <- system.file("inst/extdata/20Hz_file.bin", package = "GENEAcore")
+#' binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
 #' con <- file(binfile_path, "r")
 #' binfile <- readLines(con, skipNul = TRUE)
 #' close(con)
-#' output_folder <- "."
+#' output_folder <- tempdir()
 #' MPI <- create_MPI(binfile, binfile_path, output_folder)
 #' MPI <- detect_nonmovement(binfile, binfile_path, output_folder)
 detect_nonmovement <- function(binfile,
                                binfile_path,
                                output_folder,
                                still_seconds = 120,
-                               sd_threshold = 0.011,
+                               sd_threshold = 0.013,
                                temp_seconds = 240,
                                border_seconds = 300,
                                long_still_seconds = 120 * 60,
@@ -56,7 +56,7 @@ detect_nonmovement <- function(binfile,
 
     # Condition check for non-wear
     temp_seconds <- floor(temp_seconds / 2) * 2 ## need to make sure this is an even number
-    c_diff_temp <- c(0, cumsum(diff(measurements$temp)))
+    c_diff_temp <- c(0, cumsum(diff(measurements$Temp)))
 
     if ((nrow(measurements) < (still_seconds + 1)) || (length(c_diff_temp) < temp_seconds)) {
       warning(paste(basename(binfile_path), ": Insufficient data to detect non-movement,", nrow(measurements), "data points"))
@@ -89,7 +89,7 @@ detect_nonmovement <- function(binfile,
 
     # still points on sphere for calibration
     sphere_points <- na.omit(measurements[measurements$sd_acc < sd_threshold, ])
-    sphere_points <- subset(sphere_points, select = c(x, y, z, temp))
+    sphere_points <- subset(sphere_points, select = c(x, y, z, Temp))
     # remove 0 rows to handle division by zero error in calc_autocalparams
     sphere_points <- subset(sphere_points, !(x == 0 & y == 0 & z == 0))
     colnames(sphere_points) <- c("x", "y", "z", "temp")
@@ -126,7 +126,7 @@ detect_nonmovement <- function(binfile,
       start_time <- still_events$start_time[bout_index]
       end_time <- still_events$end_time[bout_index]
       duration <- still_events$duration[bout_index]
-      num_events <- 1
+      number_events <- 1
       category <- NA
 
       if (nrow(still_events) > 2) {
@@ -134,13 +134,13 @@ detect_nonmovement <- function(binfile,
           # adjoining event
           if (still_events$prev_duration[i] < border_seconds) {
             end_time[bout_index] <- still_events$end_time[i]
-            duration[bout_index] <- duration[bout_index] + still_events$duration[i]
+            duration[bout_index] <- duration[bout_index] + still_events$duration[i] + still_events$prev_duration[i]
             if (still_events$duration[i] > long_still_seconds) {
               category[bout_index] <- "non-wear"
             } else {
               category[bout_index] <- NA
             }
-            num_events[bout_index] <- num_events[bout_index] + 1
+            number_events[bout_index] <- number_events[bout_index] + 1
 
             # new bout
           } else {
@@ -153,18 +153,15 @@ detect_nonmovement <- function(binfile,
             } else {
               category[bout_index] <- NA
             }
-            num_events[bout_index] <- 1
+            number_events[bout_index] <- 1
           }
         }
-      } else {
-        warning(paste(basename(binfile_path), ": Only 1 still bout detected"))
       }
 
       still_bouts <- data.frame(
         start_time,
-        end_time,
         duration,
-        num_events,
+        number_events,
         category
       )
 
@@ -179,23 +176,34 @@ detect_nonmovement <- function(binfile,
       still_bouts$delta_temp <- measurements$delta_temp[match(still_bouts$start_time + temp_seconds, measurements$time)]
 
       # apply non-wear rules
-      still_bouts$category <- ifelse(((still_bouts$delta_temp <= delta_temp_threshold) & (still_bouts$num_events <= posture_changes_max)) |
-                                       (still_bouts$duration > non_move_duration_max),
-                                     "non-wear", still_bouts$category
+      still_bouts$category <- ifelse(((still_bouts$delta_temp <= delta_temp_threshold) & (still_bouts$number_events <= posture_changes_max)) |
+        (still_bouts$duration > non_move_duration_max),
+      "non-wear", still_bouts$category
       )
 
       # create output objects
       non_wear <- subset(still_bouts, still_bouts$category == "non-wear")
-      non_wear <- subset(non_wear, select = -c(delta_temp, category, num_events))
-      if (nrow(non_wear) > 0) {
-        non_wear$certainty <- 0.9
-      }
+      non_wear <- subset(non_wear, select = -c(delta_temp, category, number_events))
       still_bouts <- subset(still_bouts, is.na(still_bouts$category))
       still_bouts <- subset(still_bouts, select = -c(delta_temp, category))
     }
     # update MPI and add note to file history
-    MPI$file_history <- rbind(MPI$file_history, paste0(substr(Sys.time(), 0, 23), " non-movement detected"))
-    MPI$file_history <- rbind(MPI$file_history, paste0(substr(Sys.time(), 0, 23), " non-wear events added"))
+    MPI$file_history <- rbind(
+      MPI$file_history,
+      paste0(
+        substr(Sys.time(), 0, 23),
+        " non-movement detected and non-wear events added ",
+        "(parameters: ",
+        "still_seconds = ", still_seconds, ", ",
+        "sd_threshold = ", sd_threshold, ", ",
+        "temp_seconds = ", temp_seconds, ", ",
+        "border_seconds = ", border_seconds, ", ",
+        "long_still_seconds = ", long_still_seconds, ", ",
+        "delta_temp_threshold = ", delta_temp_threshold, ", ",
+        "posture_changes_max = ", posture_changes_max, ", ",
+        "non_move_duration_max = ", non_move_duration_max, ")"
+      )
+    )
     MPI$non_movement$sphere_points <- sphere_points
     MPI$non_movement$still_bouts <- still_bouts
     MPI$non_movement$non_wear <- non_wear
@@ -219,31 +227,30 @@ detect_nonmovement <- function(binfile,
 #' @param x_cpt_penalty The manual penalty value applied in the PELT changepoint algorithm for the x axis, see \code{\link[changepoint]{cpt.var}}.
 #' @param y_cpt_penalty The manual penalty value applied in the PELT changepoint algorithm for the y axis, see \code{\link[changepoint]{cpt.var}}.
 #' @param z_cpt_penalty The manual penalty value applied in the PELT changepoint algorithm for the z axis, see \code{\link[changepoint]{cpt.var}}.
-#' @param CutTime24Hr Time in 24h to split the days up by.
+#' @param cut_time_24hr Time in 24h to split the days up by.
 #' @return List of time, index and day number of each transition within the measurement period information.
 #' @importFrom utils timestamp
 #' @export
 #' @examples
-#' binfile_path <- system.file("inst/extdata/20Hz_file.bin", package = "GENEAcore")
+#' binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
 #' con <- file(binfile_path, "r")
 #' binfile <- readLines(con, skipNul = TRUE)
 #' close(con)
-#' output_folder <- "."
+#' output_folder <- tempdir()
 #' MPI <- create_MPI(binfile, binfile_path, output_folder)
 #' MPI <- detect_transitions(binfile, binfile_path, output_folder)
 detect_transitions <- function(binfile,
                                binfile_path,
                                output_folder,
-                               minimum_event_duration = 3,
-                               x_cpt_penalty = 20,
-                               y_cpt_penalty = 30,
-                               z_cpt_penalty = 20,
-                               CutTime24Hr = "15:00") {
-  # :DEV: add checks for CutTime24Hr and other input formats
-  CutTime24Hr <- check_time_format(CutTime24Hr)
-
+                               minimum_event_duration = 5,
+                               x_cpt_penalty = 18,
+                               y_cpt_penalty = 25,
+                               z_cpt_penalty = 16,
+                               cut_time_24hr = "15:00") {
   # Get UniqueBinFileIdentifier
   UniqueBinFileIdentifier <- get_UniqueBinFileIdentifier(binfile)
+
+  cut_time_24hr <- check_time_format(cut_time_24hr)
 
   if (!is.na(UniqueBinFileIdentifier)) {
     # Check if downsampled data file already exists and create if not
@@ -256,102 +263,100 @@ detect_transitions <- function(binfile,
     MPI_filepath <- file.path(output_folder, paste0(UniqueBinFileIdentifier, "_MPI.rds"))
     MPI <- readRDS(MPI_filepath)
 
-    MPI$file_data[["CutTime24Hr"]] <- CutTime24Hr
-
-    CutTime24HrOffset <- 60 * (60 * as.numeric(unlist(strsplit(CutTime24Hr, ":"))[1]) + as.numeric(unlist(strsplit(CutTime24Hr, ":"))[2]))
-    if ((MPI$file_data[["MeasurementStartTime"]] - MPI$file_data[["FirstLocalMidnightTime"]]) > CutTime24HrOffset) {
-      LocalFirstCutTime <- MPI$file_data[["FirstLocalMidnightTime"]] + CutTime24HrOffset
+    if (("CutTime24Hr" %in% names(MPI$file_data)) && (MPI$file_data[["CutTime24Hr"]] == cut_time_24hr)) {
+      return(MPI)
     } else {
-      LocalFirstCutTime <- MPI$file_data[["FirstLocalMidnightTime"]] - (24 * 60 * 60 - CutTime24HrOffset)
-    }
+      MPI$file_data[["CutTime24Hr"]] <- cut_time_24hr
+      cut_times <- get_cut_times(cut_time_24hr, MPI)
+      MPI$file_data[["NumberDays"]] <- length(cut_times) - 1
 
-    if (LocalFirstCutTime < MPI$file_data[["MeasurementEndTime"]]) {
-      CutTimes <- seq(LocalFirstCutTime, MPI$file_data[["MeasurementEndTime"]], 24 * 60 * 60)
-      CutTimes <- c(MPI$file_data[["MeasurementStartTime"]], CutTimes, MPI$file_data[["MeasurementEndTime"]])
-    } else {
-      CutTimes <- c(MPI$file_data[["MeasurementStartTime"]], MPI$file_data[["MeasurementEndTime"]])
-    }
-    CutTimes <- sort(unique(CutTimes))
-    CutTimes <- CutTimes[CutTimes >= MPI$file_data[["MeasurementStartTime"]]]
-    MPI$file_data[["NumberDays"]] <- length(CutTimes) - 1
+      cpts_var_all <- c()
+      cpts_index <- c()
+      days_all <- c()
+      for (i in 1:MPI$file_data[["NumberDays"]]) {
+        # print(paste("Day", i))
+        day_measurements <- subset(measurements, TimeUTC >= cut_times[i] & TimeUTC < cut_times[i + 1])
+        day_measurements <- na.omit(day_measurements)
 
-    cpts_var_all <- c()
-    cpts_index <- c()
-    days_all <- c()
-    for (i in 1:MPI$file_data[["NumberDays"]]) {
-      # print(paste("Day", i))
-      day_measurements <- subset(measurements, timestamp >= CutTimes[i] & timestamp < CutTimes[i + 1])
-      day_measurements <- na.omit(day_measurements)
+        cpt_var_x <- changepoint::cpt.var(
+          data = day_measurements$x,
+          penalty = "Manual",
+          pen.value = x_cpt_penalty,
+          minseglen = minimum_event_duration,
+          method = "PELT"
+        )
 
-      cpt_var_x <- changepoint::cpt.var(
-        data = day_measurements$x,
-        penalty = "Manual",
-        pen.value = x_cpt_penalty,
-        minseglen = minimum_event_duration,
-        method = "PELT"
+        cpt_var_y <- changepoint::cpt.var(
+          data = day_measurements$y,
+          penalty = "Manual",
+          pen.value = y_cpt_penalty,
+          minseglen = minimum_event_duration,
+          method = "PELT"
+        )
+
+        cpt_var_z <- changepoint::cpt.var(
+          data = day_measurements$z,
+          penalty = "Manual",
+          pen.value = z_cpt_penalty,
+          minseglen = minimum_event_duration,
+          method = "PELT"
+        )
+
+        # Combine axes & days
+        cpts_var_day <- c(
+          cpt_var_x@cpts,
+          cpt_var_y@cpts,
+          cpt_var_z@cpts
+        )
+
+        # Sort in time order
+        cpts_var_day <- sort(cpts_var_day)
+
+        # Remove direct duplicates
+        cpts_var_day <- unique(cpts_var_day)
+
+        # Remove timestamps closer than minimum_event_duration
+        diffs <- c(0, diff(c(0, cpts_var_day)))
+        cpts_var_day <- data.frame(values = diffs)
+        cpts_var_day$time <- cumsum(cpts_var_day$values)
+        cpts_var_day <- cpts_var_day[cpts_var_day$values >= minimum_event_duration, ]
+        cpts_var_day <- cpts_var_day$time
+
+        # Finalise output
+        cpts_var_all <- c(cpts_var_all, day_measurements$TimeUTC[cpts_var_day])
+        cpts_index <- c(cpts_index, cpts_var_day)
+        days_all <- c(days_all, rep(i, length(cpts_var_day)))
+      }
+
+      cut_times_df <- data.frame(
+        time = cut_times,
+        index = c(rep(1, MPI$file_data[["NumberDays"]]), nrow(day_measurements) + 1),
+        day = c(1:MPI$file_data[["NumberDays"]], MPI$file_data[["NumberDays"]])
       )
 
-      cpt_var_y <- changepoint::cpt.var(
-        data = day_measurements$y,
-        penalty = "Manual",
-        pen.value = y_cpt_penalty,
-        minseglen = minimum_event_duration,
-        method = "PELT"
+      cpts_var_df <- data.frame(time = cpts_var_all, index = cpts_index, day = days_all)
+      cpts_var_all_df <- remove_short_transitions(cpts_var_df, cut_times_df, minimum_event_duration)
+      colnames(cpts_var_all_df) <- c("time_UTC", "index", "day_number")
+
+      # Update MPI and add note to file history
+      MPI$file_history <- rbind(
+        MPI$file_history,
+        paste0(
+          substr(Sys.time(), 0, 23),
+          " event transitions added ",
+          "(parameters: ",
+          "minimum_event_duration = ", minimum_event_duration, ", ",
+          "x_cpt_penalty = ", x_cpt_penalty, ", ",
+          "y_cpt_penalty = ", y_cpt_penalty, ", ",
+          "z_cpt_penalty = ", z_cpt_penalty, ", ",
+          "cut_time_24hr = ", cut_time_24hr, ")"
+        )
       )
+      MPI$transitions <- cpts_var_all_df
+      saveRDS(MPI, MPI_filepath)
 
-      cpt_var_z <- changepoint::cpt.var(
-        data = day_measurements$z,
-        penalty = "Manual",
-        pen.value = z_cpt_penalty,
-        minseglen = minimum_event_duration,
-        method = "PELT"
-      )
-
-      # Combine axes & days
-      cpts_var_day <- c(
-        cpt_var_x@cpts,
-        cpt_var_y@cpts,
-        cpt_var_z@cpts
-      )
-
-      # Sort in time order
-      cpts_var_day <- sort(cpts_var_day)
-
-      # Remove direct duplicates
-      cpts_var_day <- unique(cpts_var_day)
-
-      # Remove timestamps closer than minimum_event_duration
-      cpts_var_day <- data.frame(unclass(rle(c(0, diff(c(0, cpts_var_day))))))
-      cpts_var_day$time <- cumsum(cpts_var_day$values)
-      cpts_var_day <- cpts_var_day[cpts_var_day$values >= minimum_event_duration, ]
-      cpts_var_day <- cpts_var_day$time
-
-      # Finalise output
-      cpts_var_all <- c(cpts_var_all, day_measurements$time[cpts_var_day])
-      cpts_index <- c(cpts_index, cpts_var_day)
-      days_all <- c(days_all, rep(i, length(cpts_var_day)))
+      return(MPI)
     }
-
-    CutTimes_df <- data.frame(
-      time = CutTimes,
-      index = c(rep(1, MPI$file_data[["NumberDays"]]), nrow(day_measurements)),
-      day = c(1:MPI$file_data[["NumberDays"]], MPI$file_data[["NumberDays"]])
-    )
-    if (MPI$file_data[["NumberDays"]] > 1) {
-      CutTimes_df <- new_cut_times(CutTimes_df)
-    }
-    cpts_var_df <- data.frame(time = cpts_var_all, index = cpts_index, day = days_all)
-    cpts_var_all_df <- rbind(cpts_var_df, CutTimes_df)
-    cpts_var_all_df <- cpts_var_all_df[order(cpts_var_all_df$time), ]
-    cpts_var_all_df <- unique(cpts_var_all_df)
-    cpts_var_all_df <- cpts_var_all_df[!duplicated(cpts_var_all_df[, c("index", "day")]), ]
-
-    # Update MPI and add note to file history
-    MPI$file_history <- rbind(MPI$file_history, paste0(substr(Sys.time(), 0, 23), " event transitions added"))
-    MPI$transitions <- cpts_var_all_df
-    saveRDS(MPI, MPI_filepath)
-
-    return(MPI)
   } else {
     warning(paste(basename(binfile_path), ": UniqueBinFileIdentifier cannot be created, no transitions calculated"))
     MPI <- NA
@@ -360,35 +365,30 @@ detect_transitions <- function(binfile,
 }
 
 
-#' New Cut Times
+#' Remove Short Transitions
 #'
-#' @details Add the timestamps, indexes and day numbers of the cut times and their ends.
-#' @param df Cut Times data frame.
-#' @return Data frame with added cut times.
+#' @details Identify and remove transitions shorter than the minimum event duration.
+#' @param cpts_var_df Calculated changepoints data frame.
+#' @param cut_times Start of day transitions data frame.
+#' @param minimum_event_duration The minimum interval between changepoint transitions.
+#' @return Data frame of all transitions including start of day with short transitions removed.
 #' @export
 #' @examples
-#' CutTimes_df <- data.frame(
-#'   time = c(1731421000, 1731421100, 1731421362, 1731421480, 1731421525),
-#'   index = c(56, 1, 230, 1, 400), day = c(1, 2, 2, 3, 3)
+#' changepoints <- data.frame(
+#'   time = c(1677855218, 1677855598, 1677855661, 1677855679),
+#'   index = c(86019, 86399, 62, 80),
+#'   day = c(1, 1, 2, 2)
 #' )
-#' CutTimes_df <- new_cut_times(CutTimes_df)
-new_cut_times <- function(df) {
-  new_times <- integer()
-  new_indices <- integer()
-  new_days <- integer()
+#' cut_times <- data.frame(time = 1677855600, index = 1, day = 2)
+#' transitions <- remove_short_transitions(changepoints, cut_times, 5)
+remove_short_transitions <- function(cpts_var_df, cut_times, minimum_event_duration) {
+  distance <- abs(outer(cpts_var_df$time, cut_times$time, FUN = "-"))
+  distance_min <- apply(distance, 1, FUN = min)
+  cpts_var_df <- cpts_var_df[!(distance_min >= 1 & distance_min <= (minimum_event_duration - 1)), ]
 
-  for (i in 2:(nrow(df) - 1)) {
-    new_time <- df$time[i] - 1
-    new_index <- df$time[i] - df$time[i - 1]
-    new_day <- df$day[i - 1]
-
-    new_times <- c(new_times, new_time)
-    new_indices <- c(new_indices, new_index)
-    new_days <- c(new_days, new_day)
-  }
-
-  new_df <- data.frame(time = new_times, index = new_indices, day = new_days)
-  combined_df <- rbind(df, new_df)
-  combined_df <- combined_df[order(combined_df$time), ]
-  return(combined_df)
+  cpts_var_all_df <- rbind(cpts_var_df, cut_times)
+  cpts_var_all_df <- cpts_var_all_df[order(cpts_var_all_df$time), ]
+  cpts_var_all_df <- cpts_var_all_df[!duplicated(cpts_var_all_df[, c("index", "day")]), ]
+  rownames(cpts_var_all_df) <- NULL
+  return(cpts_var_all_df)
 }

@@ -6,19 +6,20 @@
 \usage{
 geneacore(
   data_folder = data_folder,
-  CutTime24Hr = "15:00",
+  cut_time_24hr = "15:00",
   output_epochs = TRUE,
   epoch_duration = 1,
   output_events = TRUE,
   output_steps = FALSE,
   output_csv = FALSE,
-  timer = FALSE
+  timer = FALSE,
+  summary = FALSE
 )
 }
 \arguments{
-\item{data_folder}{Folder that contains raw data bin files to process.}
+\item{data_folder}{Folder that contains raw data bin files to process or path to single bin file.}
 
-\item{CutTime24Hr}{Time in 24h to split the days up by.}
+\item{cut_time_24hr}{Time in 24h to split the days up by.}
 
 \item{output_epochs}{Create epoch outputs.}
 
@@ -31,10 +32,22 @@ geneacore(
 \item{output_csv}{Allows CSV output to be saved during epoch and event processing.}
 
 \item{timer}{Print elapsed times of each process.}
+
+\item{summary}{Create bin file summary for all files in data folder.}
 }
 \value{
 RDS and CSV of Measurement Period Information, Epoch measures and Event measures.
 }
 \description{
-Main GENEAcore Function
+Main GENEAcore Function which performs the following tasks:
+\itemize{
+\item Checks for and reads or creates Measurement Processing Information (MPI)
+\item Downsamples the file to 1Hz and detects periods of non movement
+\item Calculates auto calibration settings for the device
+\item Identifies transitions (if processing events)
+\item Applies auto calibration scaling
+\item Counts steps
+\item Performs aggregations by event or epoch
+\item Writes out data
+}
 }

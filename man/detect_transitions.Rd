@@ -8,11 +8,11 @@ detect_transitions(
   binfile,
   binfile_path,
   output_folder,
-  minimum_event_duration = 3,
-  x_cpt_penalty = 20,
-  y_cpt_penalty = 30,
-  z_cpt_penalty = 20,
-  CutTime24Hr = "15:00"
+  minimum_event_duration = 5,
+  x_cpt_penalty = 18,
+  y_cpt_penalty = 25,
+  z_cpt_penalty = 16,
+  cut_time_24hr = "15:00"
 )
 }
 \arguments{
@@ -30,7 +30,7 @@ detect_transitions(
 
 \item{z_cpt_penalty}{The manual penalty value applied in the PELT changepoint algorithm for the z axis, see \code{\link[changepoint]{cpt.var}}.}
 
-\item{CutTime24Hr}{Time in 24h to split the days up by.}
+\item{cut_time_24hr}{Time in 24h to split the days up by.}
 }
 \value{
 List of time, index and day number of each transition within the measurement period information.
@@ -42,11 +42,11 @@ Detect Transitions
 Function to detect mean and variance changepoints in 1Hz acceleration data from a bin file.
 }
 \examples{
-binfile_path <- system.file("inst/extdata/20Hz_file.bin", package = "GENEAcore")
+binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)
 close(con)
-output_folder <- "."
+output_folder <- tempdir()
 MPI <- create_MPI(binfile, binfile_path, output_folder)
 MPI <- detect_transitions(binfile, binfile_path, output_folder)
 }

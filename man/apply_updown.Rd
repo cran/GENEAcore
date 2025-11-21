@@ -2,7 +2,7 @@
 % Please edit documentation in R/apply_measures.R
 \name{apply_updown}
 \alias{apply_updown}
-\title{Apply Elevation (updown)}
+\title{Apply Elevation (UpDown)}
 \usage{
 apply_updown(x)
 }
@@ -13,7 +13,7 @@ apply_updown(x)
 Measure column appended to end of calibrated data frame.
 }
 \description{
-Apply Elevation (updown)
+Apply Elevation (UpDown)
 }
 \examples{
 x <- c(0.14268, 0.21757, -0.529, -0.36383)

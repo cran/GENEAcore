@@ -9,7 +9,7 @@ detect_nonmovement(
   binfile_path,
   output_folder,
   still_seconds = 120,
-  sd_threshold = 0.011,
+  sd_threshold = 0.013,
   temp_seconds = 240,
   border_seconds = 300,
   long_still_seconds = 120 * 60,
@@ -56,11 +56,11 @@ Function to detect non-movement bouts, non-wear events and points in a 1Hz
 downsampled bin file.
 }
 \examples{
-binfile_path <- system.file("inst/extdata/20Hz_file.bin", package = "GENEAcore")
+binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)
 close(con)
-output_folder <- "."
+output_folder <- tempdir()
 MPI <- create_MPI(binfile, binfile_path, output_folder)
 MPI <- detect_nonmovement(binfile, binfile_path, output_folder)
 }

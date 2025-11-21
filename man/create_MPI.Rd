@@ -25,9 +25,10 @@ Create Measurement Period Information
 Function to create measurement period information (MPI) from a GENEActiv bin file
 }
 \examples{
-binfile_path <- system.file("inst/extdata/20Hz_file.bin", package = "GENEAcore")
+binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)
 close(con)
-MPI <- create_MPI(binfile)
+output_folder <- tempdir()
+MPI <- create_MPI(binfile, binfile_path, output_folder, out_rds = FALSE)
 }

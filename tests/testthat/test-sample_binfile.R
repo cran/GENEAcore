@@ -30,13 +30,13 @@ local({
   library(GENEAread)
   expected_downsample <- as.data.frame(read.bin(binfile_path, calibrate = FALSE, downsample = 100)$data.out, mmap.load = FALSE)
   expected_downsample[, c("x", "y", "z")] <- expected_downsample[, c("x", "y", "z")] / 256 # Apply scaling factor
-  names(expected_downsample)[c(1, 2, 3, 4, 7)] <- c("timestamp", "x", "y", "z", "temp") # Adjust column names
-  expected_downsample$timestamp <- expected_downsample$timestamp - 3600 # Compensate for time zone bug in GENEAread
+  names(expected_downsample)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
+  expected_downsample$TimeUTC <- expected_downsample$TimeUTC - 3600 # Compensate for time zone bug in GENEAread
 
   expected_rawdata <- as.data.frame(read.bin(binfile_path, calibrate = FALSE)$data.out, mmap.load = FALSE)
   expected_rawdata[, c("x", "y", "z")] <- expected_rawdata[, c("x", "y", "z")] / 256 # Apply scaling factor
-  names(expected_rawdata)[c(1, 2, 3, 4, 7)] <- c("timestamp", "x", "y", "z", "temp") # Adjust column names
-  expected_rawdata$timestamp <- expected_rawdata$timestamp - 3600 # Compensate for time zone bug in GENEAread
+  names(expected_rawdata)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
+  expected_rawdata$TimeUTC <- expected_rawdata$TimeUTC - 3600 # Compensate for time zone bug in GENEAread
 
   test_that("Raw sampled data for whole second start integer frequency file matches GENEAread", {
     expect_equal(rawdata[, 1:7], expected_rawdata, tolerance = 1e-6)
@@ -71,13 +71,13 @@ local({
   library(GENEAread)
   expected_downsample <- as.data.frame(read.bin(binfile_path, calibrate = FALSE, downsample = 100)$data.out, mmap.load = FALSE)
   expected_downsample[, c("x", "y", "z")] <- expected_downsample[, c("x", "y", "z")] / 256 # Apply scaling factor
-  names(expected_downsample)[c(1, 2, 3, 4, 7)] <- c("timestamp", "x", "y", "z", "temp") # Adjust column names
-  expected_downsample$timestamp <- expected_downsample$timestamp - 3600 # Compensate for time zone bug in GENEAread
+  names(expected_downsample)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
+  expected_downsample$TimeUTC <- expected_downsample$TimeUTC - 3600 # Compensate for time zone bug in GENEAread
 
   expected_rawdata <- as.data.frame(read.bin(binfile_path, calibrate = FALSE)$data.out, mmap.load = FALSE)
   expected_rawdata[, c("x", "y", "z")] <- expected_rawdata[, c("x", "y", "z")] / 256 # Apply scaling factor
-  names(expected_rawdata)[c(1, 2, 3, 4, 7)] <- c("timestamp", "x", "y", "z", "temp") # Adjust column names
-  expected_rawdata$timestamp <- expected_rawdata$timestamp - 3600 # Compensate for time zone bug in GENEAread
+  names(expected_rawdata)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
+  expected_rawdata$TimeUTC <- expected_rawdata$TimeUTC - 3600 # Compensate for time zone bug in GENEAread
 
   test_that("Raw sampled data for whole second start recurring decimal frequency file matches GENEAread", {
     expect_equal(rawdata[1:1000, 1:7], expected_rawdata[1:1000, ], tolerance = 1e-6)
@@ -112,11 +112,11 @@ local({
   library(GENEAread)
   expected_downsample <- as.data.frame(read.bin(binfile_path, calibrate = FALSE, downsample = 100)$data.out, mmap.load = FALSE)
   expected_downsample[, c("x", "y", "z")] <- expected_downsample[, c("x", "y", "z")] / 256 # Apply scaling factor
-  names(expected_downsample)[c(1, 2, 3, 4, 7)] <- c("timestamp", "x", "y", "z", "temp") # Adjust column names
+  names(expected_downsample)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
 
   expected_rawdata <- as.data.frame(read.bin(binfile_path, calibrate = FALSE)$data.out, mmap.load = FALSE)
   expected_rawdata[, c("x", "y", "z")] <- expected_rawdata[, c("x", "y", "z")] / 256 # Apply scaling factor
-  names(expected_rawdata)[c(1, 2, 3, 4, 7)] <- c("timestamp", "x", "y", "z", "temp") # Adjust column names
+  names(expected_rawdata)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
 
   test_that("Raw sampled data for half second start recurring decimal frequency file matches GENEAread", {
     expect_equal(rawdata[1:2000, 1:7], expected_rawdata[34:2033, ], tolerance = 1e-6, ignore_attr = TRUE)

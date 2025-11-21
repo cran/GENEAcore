@@ -15,7 +15,7 @@ local({
   MPI_50 <- create_MPI(binfile_50, binfile_path_50, output_folder)
   rawdata_50 <- sample_binfile(binfile_50, binfile_path_50, output_folder, downsample = FALSE)
   calibrated_50 <- apply_calibration(rawdata_50, MPI_50$factory_calibration, MPI_50$file_data[["MeasurementDevice"]])
-  steps_Gcore_50 <- stepCounter(calibrated_50$y, samplefreq = MPI_50$file_data[["MeasurementFrequency"]])
+  steps_Gcore_50 <- step_counter(calibrated_50$y, sample_frequency = MPI_50$file_data[["MeasurementFrequency"]], fun = c("GENEAcount", "mean"))
 
   ## 20Hz 1.1
   binfile_path_20 <- file.path(folder_path, "20Hz_file.bin")
@@ -27,7 +27,7 @@ local({
   MPI_20 <- create_MPI(binfile_20, binfile_path_20, output_folder)
   rawdata_20 <- sample_binfile(binfile_20, binfile_path_20, output_folder, downsample = FALSE)
   calibrated_20 <- apply_calibration(rawdata_20, MPI_20$factory_calibration, MPI_20$file_data[["MeasurementDevice"]])
-  steps_Gcore_20 <- stepCounter(calibrated_20$y, samplefreq = MPI_20$file_data[["MeasurementFrequency"]])
+  steps_Gcore_20 <- step_counter(calibrated_20$y, sample_frequency = MPI_20$file_data[["MeasurementFrequency"]], fun = c("GENEAcount", "mean"))
 
   library(GENEAread)
   library(GENEAclassify)
@@ -35,13 +35,13 @@ local({
   steps_Gclassify_50 <- GENEAclassify::stepCounter(AccData_50)
 
   test_that("Step counter outputs match GENEAclassify", {
-    expect_equal(steps_Gcore_50, steps_Gclassify_50[1:3])
+    expect_equal(steps_Gcore_50, steps_Gclassify_50[1:2])
   })
 
   AccData_20 <- read.bin(binfile_path_20)
   steps_Gclassify_20 <- GENEAclassify::stepCounter(AccData_20)
 
   test_that("Step counter outputs match GENEAclassify", {
-    expect_equal(steps_Gcore_20, steps_Gclassify_20[1:3])
+    expect_equal(steps_Gcore_20, steps_Gclassify_20[1:2])
   })
 })

@@ -4,6 +4,12 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
+## ----eval = FALSE-------------------------------------------------------------
+#  vignette("breaking-changes", package = "GENEAcore")
+
+## ----eval = FALSE-------------------------------------------------------------
+#  browseURL(system.file("extdata", "GENEAcore_Data_Dictionary_21Nov2025.pdf", package = "GENEAcore"))
+
 ## ----Installing from CRAN, eval = FALSE---------------------------------------
 #  install.packages("GENEAcore", dependencies = TRUE)
 
@@ -11,11 +17,12 @@ knitr::opts_chunk$set(
 #  # Note that R only uses / not \ when referring to a file/directory location
 #  install.packages("changepoint")
 #  install.packages("signal")
-#  install.packages("C:/path/to/GENEAcore_1.0.0.tar.gz", repos = NULL, type = "source")
+#  install.packages("C:/path/to/GENEAcore_1.1.1.tar.gz", repos = NULL, type = "source")
 
 ## ----Loading in the GENEAcore library, eval = FALSE---------------------------
 #  library(GENEAcore)
 #  library(changepoint)
+#  library(signal)
 
 ## ----Running geneacore, eval = FALSE------------------------------------------
 #  library(GENEAcore)
@@ -25,7 +32,7 @@ knitr::opts_chunk$set(
 #  library(GENEAcore)
 #  geneacore(
 #    data_folder = "C:/path/to/datafolder",
-#    CutTime24Hr = "15:00",
+#    cut_time_24hr = "15:00",
 #    output_epochs = TRUE,
 #    epoch_duration = 600, # 10 minutes
 #    output_events = FALSE,
@@ -83,7 +90,8 @@ knitr::opts_chunk$set(
 #    start_time = NULL,
 #    end_time = NULL,
 #    downsample = FALSE,
-#    output_csv = FALSE
+#    output_csv = FALSE,
+#    save_raw = FALSE
 #  )
 
 ## ----Auto calibration default, eval = FALSE-----------------------------------
@@ -98,7 +106,7 @@ knitr::opts_chunk$set(
 #  # Detect non-movement
 #  MPI <- detect_nonmovement(binfile, binfile_path, output_folder,
 #    still_seconds = 120,
-#    sd_threshold = 0.011,
+#    sd_threshold = 0.013,
 #    temp_seconds = 240,
 #    border_seconds = 300,
 #    long_still_seconds = 120 * 60,
@@ -131,11 +139,11 @@ knitr::opts_chunk$set(
 
 ## ----Detect transitions for event aggregation parameters, eval = FALSE--------
 #  MPI <- detect_transitions(binfile, binfile_path, output_folder,
-#    minimum_event_duration = 3,
-#    x_cpt_penalty = 20,
-#    y_cpt_penalty = 30,
-#    z_cpt_penalty = 20,
-#    CutTime24Hr = "15:00"
+#    minimum_event_duration = 5,
+#    x_cpt_penalty = 18,
+#    y_cpt_penalty = 25,
+#    z_cpt_penalty = 16,
+#    cut_time_24hr = "15:00"
 #  )
 
 ## ----Applying calculations on calibrated data, eval = FALSE-------------------
@@ -152,21 +160,21 @@ knitr::opts_chunk$set(
 #  )
 
 ## ----Aggregating events, eval = FALSE-----------------------------------------
-#  events_agg <- aggregateEvents(calibrated,
+#  events_agg <- aggregate_events(calibrated,
 #    measure = c("x", "y", "z", "AGSA"),
-#    time = "timestamp",
+#    time = "TimeUTC",
 #    sample_frequency = sample_frequency,
 #    events = events,
-#    fun = function(x) c(mean = mean(x), sd = sd(x))
+#    fun = function(x) c(Mean = mean(x), SD = sd(x))
 #  )
 
 ## ----Aggregating epochs, eval = FALSE-----------------------------------------
-#  epochs_agg <- aggregateEpochs(calibrated,
+#  epochs_agg <- aggregate_epochs(calibrated,
 #    duration = 1,
 #    measure = c("x", "y", "z", "AGSA", "ENMO"),
-#    time = "timestamp",
+#    time = "TimeUTC",
 #    sample_frequency = MPI$file_data[["MeasurementFrequency"]],
-#    fun = function(x) c(mean = mean(x), sd = sd(x))
+#    fun = function(x) c(Mean = mean(x), SD = sd(x))
 #  )
 
 ## ----GENEAcore flowchart, echo=FALSE------------------------------------------
@@ -200,26 +208,29 @@ knitr::include_graphics("../inst/extdata/geneacore_functions.png")
 
 ## ----Aggregating events day by day, eval = FALSE------------------------------
 #  # Prepare time borders of each day
-#  cut_time <- strptime(CutTime24Hr, format = "%H:%M")$hour
+#  cut_time <- strptime(cut_time_24hr, format = "%H:%M")$hour
 #  cut_time_shift <- (cut_time * 60 * 60) - MPI$file_data[["TimeOffset"]]
-#  first_day <- as.Date(as.POSIXct(MPI$file_info$firsttimestamp - cut_time_shift, origin = "1970-01-01"))
-#  last_day <- as.Date(as.POSIXct(MPI$file_info$lasttimestamp - cut_time_shift, origin = "1970-01-01"))
+#  first_day <- as.Date(as.POSIXct(MPI$file_info$first_time_UTC - cut_time_shift, origin = "1970-01-01"))
+#  last_day <- as.Date(as.POSIXct(MPI$file_info$last_time_UTC - cut_time_shift, origin = "1970-01-01"))
 #  
 #  # Generate start and end time for each day we need to process
 #  days_to_process <- seq(first_day, last_day, by = 1)
 #  date_range <- lapply(days_to_process, FUN = function(x) {
 #    c(
-#      "start" = max(MPI$file_info$firsttimestamp, as.numeric(as.POSIXlt(x)) + cut_time_shift),
-#      "end" = min(MPI$file_info$lasttimestamp, as.numeric(as.POSIXlt(x + 1)) + cut_time_shift)
+#      "start" = max(MPI$file_info$first_time_UTC, as.numeric(as.POSIXlt(x)) + cut_time_shift),
+#      "end" = min(MPI$file_info$last_time_UTC, as.numeric(as.POSIXlt(x + 1)) + cut_time_shift)
 #    )
 #  })
 #  date_range <- data.frame(t(sapply(date_range, c)))
+#  date_range$day <- rownames(date_range)
+#  date_range$length <- date_range$end - date_range$start
+#  # A valid day is at least 5 seconds long
+#  date_range <- date_range[date_range$length > 5, ]
 #  
 #  sample_frequency <- MPI$file_data[["MeasurementFrequency"]]
 #  events_list <- list()
-#  
 #  # Sample, calibrate and aggregate the data day-by-day
-#  for (day_number in 1:nrow(date_range)) {
+#  for (day_number in date_range$day[1]:date_range$day[nrow(date_range)]) {
 #    results <- sample_binfile(binfile, binfile_path, output_folder,
 #      start_time = date_range[day_number, 1],
 #      end_time = date_range[day_number, 2],
@@ -230,20 +241,28 @@ knitr::include_graphics("../inst/extdata/geneacore_functions.png")
 #  
 #    calibrated <- apply_AGSA(calibrated)
 #  
-#    day_transitions <- transitions[transitions$day == day_number, "index"]
+#    day_transitions <- MPI$transitions[MPI$transitions$day == day_number, "index"]
 #    events <- data.frame(
 #      "start" = day_transitions[-length(day_transitions)],
-#      "end" = floor(sample_frequency * (day_transitions[-1]))
+#      "end" = floor(sample_frequency * (day_transitions[-1] - 1))
 #    )
+#    if (length(day_transitions) == 1) {
+#      events <- data.frame("start" = day_transitions, "end" = nrow(calibrated))
+#    }
 #    if (nrow(events) > 1) {
 #      events$start[2:nrow(events)] <- events$end[-nrow(events)] + 1
 #    }
-#    events_agg <- aggregateEvents(calibrated,
+#    if ((nrow(calibrated) - events$end[length(events$end)]) > sample_frequency) {
+#      events <- rbind(events, c(events$end[length(events$end)] + 1, nrow(calibrated)))
+#    } else {
+#      events$end[length(events$end)] <- nrow(calibrated)
+#    }
+#    events_agg <- aggregate_events(calibrated,
 #      measure = c("x", "y", "z", "AGSA"),
-#      time = "timestamp",
+#      time = "TimeUTC",
 #      sample_frequency = sample_frequency,
 #      events = events,
-#      fun = function(x) c(mean = mean(x), sd = sd(x))
+#      fun = function(x) c(Mean = mean(x), SD = sd(x))
 #    )
 #    events_list[[day_number]] <- events_agg
 #  }

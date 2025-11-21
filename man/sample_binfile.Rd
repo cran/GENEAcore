@@ -11,7 +11,8 @@ sample_binfile(
   start_time = NULL,
   end_time = NULL,
   downsample = TRUE,
-  output_csv = FALSE
+  output_csv = FALSE,
+  save_raw = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ sample_binfile(
 \item{downsample}{Logical to determine whether to downsample the file, default TRUE.}
 
 \item{output_csv}{Allow outputs of bin file sampling to be saved as CSV.}
+
+\item{save_raw}{Save daily raw sampled data as RDS to for quicker reprocessing, default FALSE.}
 }
 \value{
 List of 1Hz downsampled data or raw sample data.
@@ -37,11 +40,12 @@ Sample Bin File
 }
 \details{
 Function to read in a GENEActiv bin file with option to downsample
-to 1Hz.
+to 1Hz. This can read the whole of the file or just a portion of it by
+setting the start_time and end_time parameters.
 }
 \examples{
-binfile_path <- system.file("inst/extdata/20Hz_file.bin", package = "GENEAcore")
-output_folder <- "."
+binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+output_folder <- tempdir()
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)
 close(con)

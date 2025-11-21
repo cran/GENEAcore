@@ -45,14 +45,14 @@ local({
   })
 
   test_that("UpDown calculation is correct", {
-    expect_equal((apply_updown(data)$updown), expected_updown)
+    expect_equal((apply_updown(data)$UpDown), expected_updown)
   })
 
   test_that("Degrees calculation is correct", {
-    expect_equal((apply_degrees(data)$degrees), expected_degrees)
+    expect_equal((apply_degrees(data)$Degrees), expected_degrees)
   })
 
   test_that("Radians calculation is correct", {
-    expect_equal((apply_radians(data)$radians), expected_radians)
+    expect_equal((apply_radians(data)$Radians), expected_radians)
   })
 })

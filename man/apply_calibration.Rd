@@ -8,7 +8,7 @@ apply_calibration(sensor_data, cal_params, measurement_device, use_temp = TRUE)
 }
 \arguments{
 \item{sensor_data}{Raw sensor-level data from a bin file in the form
-(x, y, z, light, button, temp).}
+(x, y, z, Light, Button, Temp).}
 
 \item{cal_params}{Calibration parameters for acceleration and
 light from MPI.}
@@ -32,17 +32,17 @@ Function to apply calibration to sensor-level data from a bin file.
 cal_params <- list(
   scale = c(1.015, 1.017, 1.027),
   offset = c(0.00128, 0.0383, 0.0138),
-  temperatureoffset = c(0, 0, 0),
+  temperature_offset = c(0, 0, 0),
   error = NA,
-  lightdenominator = 48,
-  lightnumerator = 911
+  light_denominator = 48,
+  light_numerator = 911
 )
 
 rawdata <- data.frame(
   time = c(rep(1726650857, 5)),
-  x = c(0.2421875,0.24609375,0.25390625,0.24609375,0.23828125),
-  y = c(-0.04296875,-0.04687500,-0.03515625, -0.03125000,-0.04296875),
-  z = c(-0.9453125,-0.9453125, -0.9531250,-0.9531250,-0.9609375),
+  x = c(0.2421875, 0.24609375, 0.25390625, 0.24609375, 0.23828125),
+  y = c(-0.04296875, -0.04687500, -0.03515625, -0.03125000, -0.04296875),
+  z = c(-0.9453125, -0.9453125, -0.9531250, -0.9531250, -0.9609375),
   light = c(rep(22, 5)),
   button = c(rep(0, 5)),
   temp = c(rep(21.3, 5)),

@@ -1,5 +1,5 @@
 library(testthat)
-# source( "../functions/aggregateEpochs.R")
+# source( "../functions/aggregate_epochs.R")
 # Expected values calculated within expectedCalculations.xlsx
 local({
   # test with a decimal frequency
@@ -27,20 +27,21 @@ local({
     9.130327634, 8.555770856, 11.02892649, 11.20152499,
     15.57502756, 9.443930208
   )
-  duration <- rep(c(2.100021, 2.100021, 1.800018), 2)
+  # duration <- rep(c(2.100021, 2.100021, 1.800018), 2)
+  duration <- rep(2, 6)
   expected <- data.frame(
     timestamp = timestamp[c(1, 8, 15, 21, 28, 35)],
-    epoch_number = c(1:length(expected_sum)),
+    EpochNumber = c(1:length(expected_sum)),
     value = expected_sum,
-    duration = duration
+    Duration = duration
   )
-  aggregated_decimal_frequency <- aggregateEpochs(data.frame(timestamp = timestamp, value = value),
+  aggregated_decimal_frequency <- aggregate_epochs(data.frame(timestamp = timestamp, value = value),
     duration = 2,
     measure = "value",
     sample_frequency = 3.3333,
     first_epoch_timestamp = 100,
     time = "timestamp",
-    fun = sum
+    fun = function(x) c(Sum = sum(x))
   )
   test_that("Sum with decimal frequency", {
     expect_equal(aggregated_decimal_frequency,
@@ -74,19 +75,19 @@ local({
     0.009577175, 0.12071847, 0.199551839, 0.705354735, 0.170748985,
     0.296666811, 0.640369777, 0.867175777
   )
-  epoch <- c(0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6)
+  epoch <- c(0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5)
   data <- data.frame(timestamp, value)
 
-  epoch <- c(1, 2, 3, 4, 5, 6)
-  expected_mean <- c(0.776760031, 2.420632312, 1.55594942, 1.76124008, 1.605912981, 2.285875605)
-  expected_times <- timestamp[c(6, 11, 16, 21, 26, 31)]
+  epoch <- c(1, 2, 3, 4, 5)
+  expected_mean <- c(0.776760031, 2.420632312, 1.55594942, 1.76124008, 1.605912981)
+  expected_times <- timestamp[c(6, 11, 16, 21, 26)]
   expected <- data.frame(
-    timestamp = expected_times, epoch_number = epoch,
-    value = expected_mean, duration = c(rep(5, 5), 3)
+    timestamp = expected_times, EpochNumber = epoch,
+    value = expected_mean, Duration = c(rep(5, 5))
   )
-  rownames(expected) <- seq(2, 7) # The first row is droped as it is before the start time
+  rownames(expected) <- seq(2, 6) # The first row is dropped as it is before the start time
 
-  aggregated <- aggregateEpochs(data,
+  aggregated <- aggregate_epochs(data,
     duration = 5,
     measure = "value",
     sample_frequency = 1,
@@ -94,9 +95,20 @@ local({
     time = "timestamp"
   )
 
-  test_that("aggregateEpochs calculation", {
+  test_that("aggregate_epochs calculation", {
     expect_equal(aggregated, expected)
-    expect_equal(colnames(aggregated), c("timestamp", "epoch_number", "value", "duration"))
+    expect_equal(colnames(aggregated), c("timestamp", "EpochNumber", "value", "Duration"))
+  })
+
+  test_that("aggregateEpochs warns of depreciated function and forwards arguments to aggregate_epochs", {
+    expect_warning(aggregated2 <- aggregateEpochs(data,
+      duration = 5,
+      measure = "value",
+      sample_frequency = 1,
+      first_epoch_timestamp = 1619424005,
+      time = "timestamp"
+    ))
+    expect_equal(aggregated2, aggregated)
   })
 
   ## test when epochs start at index 1
@@ -111,13 +123,13 @@ local({
 
   expected_mean_df <- data.frame(
     timestamp = timestamp[seq(from = 1, to = 31, by = 3)],
-    epoch_number = epoch2,
+    EpochNumber = epoch2,
     value = expected_mean,
-    duration = rep(3, 11)
+    Duration = rep(3, 11)
   )
-  test_that("aggregateEpochs starting at index 1", {
+  test_that("aggregate_epochs starting at index 1", {
     expect_equal(
-      aggregateEpochs(data2,
+      aggregate_epochs(data2,
         duration = 3,
         measure = "value",
         sample_frequency = 1,
@@ -135,29 +147,29 @@ local({
   )
   expected_sum_df <- data.frame(
     timestamp = timestamp[seq(from = 1, to = 31, by = 3)],
-    epoch_number = epoch2,
+    EpochNumber = epoch2,
     value = expected_sum,
-    duration = rep(3, 11)
+    Duration = rep(3, 11)
   )
-  test_that("aggregateEpochs by sum starting at index 1", {
+  test_that("aggregate_epochs by sum starting at index 1", {
     expect_equal(
-      aggregateEpochs(data2,
+      aggregate_epochs(data2,
         duration = 3,
         measure = "value",
         sample_frequency = 1,
         first_epoch_timestamp = 1619424000,
         time = "timestamp",
-        fun = sum
+        fun = function(x) c(Sum = sum(x))
       ),
       expected_sum_df
     )
     expect_equal(
-      aggregateEpochs(data2,
+      aggregate_epochs(data2,
         duration = 3,
         measure = "value",
         sample_frequency = 1,
         time = "timestamp",
-        fun = sum
+        fun = function(x) c(Sum = sum(x))
       ),
       expected_sum_df
     )
@@ -175,62 +187,62 @@ local({
   )
   expected_multicolumn_df <- data.frame(
     timestamp = timestamp[seq(from = 1, to = 31, by = 3)],
-    epoch_number = epoch2,
+    EpochNumber = epoch2,
     value = expected_sum,
     value2 = expected_sum_value2,
-    duration = rep(3, 11)
+    Duration = rep(3, 11)
   )
   expected_multifunction_df <- data.frame(
     timestamp = timestamp[seq(from = 1, to = 31, by = 3)],
-    epoch_number = epoch2,
-    value.sum = expected_sum,
-    value.mean = expected_mean,
-    duration = rep(3, 11)
+    EpochNumber = epoch2,
+    valueSum = expected_sum,
+    valueMean = expected_mean,
+    Duration = rep(3, 11)
   )
   expected_multicolumn_multifunction_df <- data.frame(
     timestamp = timestamp[seq(from = 1, to = 31, by = 3)],
-    epoch_number = epoch2,
-    value.sum = expected_sum,
-    value.mean = expected_mean,
-    value2.sum = expected_sum_value2,
-    value2.mean = expected_mean_value2,
-    duration = rep(3, 11)
+    EpochNumber = epoch2,
+    valueSum = expected_sum,
+    valueMean = expected_mean,
+    value2Sum = expected_sum_value2,
+    value2Mean = expected_mean_value2,
+    Duration = rep(3, 11)
   )
-  test_that("AggregateEpochs multiple columns", {
+  test_that("aggregate_epochs multiple columns", {
     expect_equal(
-      aggregateEpochs(data2,
+      aggregate_epochs(data2,
         duration = 3,
         measure = c("value", "value2"),
         sample_frequency = 1,
         first_epoch_timestamp = 1619424000,
         time = "timestamp",
-        fun = sum
+        fun = function(x) c(Sum = sum(x))
       ),
       expected_multicolumn_df
     )
   })
-  test_that("AggregateEpochs muliple functions", {
+  test_that("aggregate_epochs muliple functions", {
     expect_equal(
-      aggregateEpochs(data2,
+      aggregate_epochs(data2,
         duration = 3,
         measure = "value",
         sample_frequency = 1,
         first_epoch_timestamp = 1619424000,
         time = "timestamp",
-        fun = function(x) c(sum = sum(x), mean = mean(x))
+        fun = function(x) c(Sum = sum(x), Mean = mean(x))
       ),
       expected_multifunction_df
     )
   })
-  test_that("AggregateEpochs multiple columns and muliple functions", {
+  test_that("aggregate_epochs multiple columns and muliple functions", {
     expect_equal(
-      aggregateEpochs(data2,
+      aggregate_epochs(data2,
         duration = 3,
         measure = c("value", "value2"),
         sample_frequency = 1,
         first_epoch_timestamp = 1619424000,
         time = "timestamp",
-        fun = function(x) c(sum = sum(x), mean = mean(x))
+        fun = function(x) c(Sum = sum(x), Mean = mean(x))
       ),
       expected_multicolumn_multifunction_df
     )
@@ -249,14 +261,14 @@ local({
 
   events <- data.frame(start = event_start, end = event_end)
 
-  # tests for createEventMapping
+  # tests for create_event_mapping
   expected_mapping <- c(
     rep(0, 3), rep(1, 6),
     rep(0, 8), rep(2, 8),
     rep(0, 2), rep(3, 2),
     rep(0, 2), rep(4, 1), 0
   )
-  event_mapping <- createEventMapping(events,
+  event_mapping <- create_event_mapping(events,
     start_time = "start",
     end_time = "end",
     series_length
@@ -271,11 +283,21 @@ local({
     rep(0, 2), rep(4, 2)
   )
   expected_event2_count <- c(6, 8, 2, 2)
-  event2_mapping <- createEventMapping(data.frame(start = event2_start, end = event2_end),
+  event2_mapping <- create_event_mapping(data.frame(start = event2_start, end = event2_end),
     start_time = "start",
     end_time = "end",
     series_length
   )
+
+  test_that("createEventMapping warns of depreciated function and forwards arguments to create_event_mapping", {
+    expect_warning(event2_mapping2 <- createEventMapping(data.frame(start = event2_start, end = event2_end),
+      start_time = "start",
+      end_time = "end",
+      series_length
+    ))
+    expect_equal(event2_mapping2, event2_mapping)
+  })
+
   event3_start <- c(1, 15, 25, 29)
   event3_end <- c(6, 22, 26, 30)
   expected_event3_mapping <- c(
@@ -284,7 +306,7 @@ local({
     rep(0, 2), rep(3, 2),
     rep(0, 2), rep(4, 2), rep(0, 3)
   )
-  event3_mapping <- createEventMapping(data.frame(start = event3_start, end = event3_end),
+  event3_mapping <- create_event_mapping(data.frame(start = event3_start, end = event3_end),
     start_time = "start",
     end_time = "end",
     series_length
@@ -294,14 +316,14 @@ local({
   event4_start <- c(1)
   event4_end <- c(33)
   expected_event4_mapping <- rep(1, 33)
-  event4_mapping <- createEventMapping(data.frame(start = event4_start, end = event4_end),
+  event4_mapping <- create_event_mapping(data.frame(start = event4_start, end = event4_end),
     start_time = "start",
     end_time = "end",
     series_length
   )
   expected_event4_count <- c(33)
 
-  test_that("testing createEventMapping", {
+  test_that("testing create_event_mapping", {
     expect_equal(event_mapping, expected_mapping)
     expect_equal(event2_mapping, expected_event2_mapping)
     expect_equal(event3_mapping, expected_event3_mapping)
@@ -309,84 +331,97 @@ local({
   })
 
   # test Mean function for events
-  aggregated_events <- aggregateEvents(data2,
+  aggregated_events <- aggregate_events(data2,
     events = events,
     measure = "value",
     time = "timestamp",
     start_time = "start",
     end_time = "end",
     sample_frequency = 1,
-    fun = mean
+    fun = function(x) c(Mean = mean(x))
   )
+
+  test_that("aggregateEvents warns of depreciated function and forwards arguments to aggregate_events", {
+    expect_warning(aggregated_events2 <- aggregateEvents(data2,
+      events = events,
+      measure = "value",
+      time = "timestamp",
+      start_time = "start",
+      end_time = "end",
+      sample_frequency = 1,
+      fun = function(x) c(Mean = mean(x))
+    ))
+    expect_equal(aggregated_events2, aggregated_events)
+  })
 
 
   expected_event_mean_df <- data.frame(
     timestamp = timestamp[event_start],
-    event_number = c(1:4),
+    EventNumber = c(1:4),
     value = expected_event_mean,
-    duration = expected_event_count
+    Duration = expected_event_count
   )
-  rownames(expected_event_mean_df) <- seq(2, 5) # The first row is droped as it is event 0 (the interevent times)
+  rownames(expected_event_mean_df) <- seq(2, 5) # The first row is dropped as it is event 0 (the interevent times)
 
-  aggregated_events2 <- aggregateEvents(data2,
+  aggregated_events2 <- aggregate_events(data2,
     events = data.frame(start = event2_start, end = event2_end),
     measure = "value",
     time = "timestamp",
     start_time = "start",
     end_time = "end",
     sample_frequency = 1,
-    fun = sum
+    fun = function(x) c(Sum = sum(x))
   )
-  aggregated_events3 <- aggregateEvents(data2,
+  aggregated_events3 <- aggregate_events(data2,
     events = data.frame(start = event3_start, end = event3_end),
     measure = "value",
     time = "timestamp",
     start_time = "start",
     end_time = "end",
     sample_frequency = 1,
-    fun = sum
+    fun = function(x) c(Sum = sum(x))
   )
-  test_that("aggregateEvents by Mean", {
+  test_that("aggregate_events by Mean", {
     expect_equal(aggregated_events, expected_event_mean_df)
   })
 
   # Test Sum function for events
   expected_event_sum_df <- data.frame(
     timestamp = timestamp[event_start],
-    event_number = c(1:4),
+    EventNumber = c(1:4),
     value = expected_event_sum,
-    duration = expected_event_count
+    Duration = expected_event_count
   )
-  rownames(expected_event_sum_df) <- seq(2, 5) # The first row is droped as it is event 0 (the interevent times)
+  rownames(expected_event_sum_df) <- seq(2, 5) # The first row is dropped as it is event 0 (the interevent times)
 
   expected_event2_sum <- c(6.153587852, 14.00453766, 3.921003241, 4.050996112)
   expected_event2_sum_df <- data.frame(
     timestamp = timestamp[event2_start],
-    event_number = c(1:4),
+    EventNumber = c(1:4),
     value = expected_event2_sum,
-    duration = expected_event2_count
+    Duration = expected_event2_count
   )
-  rownames(expected_event2_sum_df) <- seq(2, 5) # The first row is droped as it is event 0 (the interevent times)
+  rownames(expected_event2_sum_df) <- seq(2, 5) # The first row is dropped as it is event 0 (the interevent times)
 
   expected_event3_sum <- c(8.624729028, 12.51867167, 4.871474297, 2.530898181)
   expected_event3_sum_df <- data.frame(
     timestamp = timestamp[event3_start],
-    event_number = c(1:4),
+    EventNumber = c(1:4),
     value = expected_event3_sum,
-    duration = expected_event3_count
+    Duration = expected_event3_count
   )
-  rownames(expected_event3_sum_df) <- seq(2, 5) # The first row is droped as it is event 0 (the interevent times)
+  rownames(expected_event3_sum_df) <- seq(2, 5) # The first row is dropped as it is event 0 (the interevent times)
 
-  test_that("aggregateEvents by Sum", {
+  test_that("aggregate_events by Sum", {
     expect_equal(
-      aggregateEvents(data2,
+      aggregate_events(data2,
         events = events,
         measure = "value",
         time = "timestamp",
         start_time = "start",
         end_time = "end",
         sample_frequency = 1,
-        fun = sum
+        fun = function(x) c(Sum = sum(x))
       ),
       expected_event_sum_df
     )
@@ -397,21 +432,21 @@ local({
   # test Max function for events
   expected_event_max_df <- data.frame(
     timestamp = timestamp[event_start],
-    event_number = c(1:4),
+    EventNumber = c(1:4),
     value = expected_event_max,
-    duration = expected_event_count
+    Duration = expected_event_count
   )
-  rownames(expected_event_max_df) <- seq(2, 5) # The first row is droped as it is event 0 (the interevent times)
-  test_that("aggregateEvents by Max", {
+  rownames(expected_event_max_df) <- seq(2, 5) # The first row is dropped as it is event 0 (the interevent times)
+  test_that("aggregate_events by Max", {
     expect_equal(
-      aggregateEvents(data2,
+      aggregate_events(data2,
         events = events,
         measure = "value",
         time = "timestamp",
         start_time = "start",
         end_time = "end",
         sample_frequency = 1,
-        fun = max
+        fun = function(x) c(Max = max(x))
       ),
       expected_event_max_df
     )
@@ -454,25 +489,25 @@ local({
   expected_event_mean <- c(0.47094425, 0.49090617, 0.4695610, 0.4643855)
   expected_event_count <- c(4, 6, 6, 8)
 
-  aggregated_events <- aggregateEvents(data3,
+  aggregated_events <- aggregate_events(data3,
     events = events,
     measure = "value",
     time = "timestamp",
     start_time = "start",
     end_time = "end",
     sample_frequency = 10,
-    fun = mean
+    fun = function(x) c(Mean = mean(x))
   )
 
 
   expected_event_mean_df2 <- data.frame(
     timestamp = timestamp[event_start],
-    event_number = c(1:4),
+    EventNumber = c(1:4),
     value = expected_event_mean,
-    duration = expected_event_count
+    Duration = expected_event_count
   )
 
-  test_that("aggregateEvents by Mean", {
+  test_that("aggregate_events by Mean", {
     expect_equal(aggregated_events, expected_event_mean_df2)
   })
 })

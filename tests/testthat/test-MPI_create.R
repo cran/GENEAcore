@@ -6,19 +6,18 @@ library(testthat)
 
 ## Unique BinFile Identifier and MPI ##
 local({
-  binfile_name_10Hz <- file.path(system.file("extdata", package = "GENEAcore"), "10Hz_calibration_file.bin")
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
+
+  # Delete all MPI files generated
+  files <- list.files(output_folder, pattern = "\\.(rds|csv)$", full.names = TRUE)
+  file.remove(files)
+
+  binfile_name_10Hz <- file.path(system.file("extdata", package = "GENEAcore"), "10Hz_calibration_file_20Nov25.bin")
   con_10Hz <- file(binfile_name_10Hz, "r")
   binfile_10Hz <- readLines(con_10Hz, skipNul = TRUE)
   close(con_10Hz)
   binfile_name <- binfile_name_10Hz
-  output_folder <- file.path(tempdir(), "GENEAcore")
-  if (!dir.exists(output_folder)) dir.create(output_folder)
-
-  # Delete all MPI files generated
-  files <- list.files(output_folder, pattern = "MPI", full.names = TRUE)
-  file.remove(files)
-  unlink(file.path(output_folder, "*.csv"))
-  unlink(file.path(output_folder, "*.rds"))
 
   MPI_10Hz <- create_MPI(binfile_10Hz, binfile_name, output_folder)
 
@@ -33,10 +32,10 @@ local({
   # close(con_tz)
   # MPI_tz <- create_MPI(binfile_tz, binfile_name_tz)
 
-  USI_10Hz <- "048297_1619380675_1_16859"
+  USI_10Hz <- "048297_1619380675_1_16862"
   USI_tz <- "100565_1708593627_1_864062"
 
-  line_numbers_10Hz <- c(33, 37, 47, 57, 60, 16859, 16850)
+  line_numbers_10Hz <- c(34, 39, 50, 60, 63, 16862, 16853)
   line_numbers_tz <- c(34, 39, 50, 60, 63, 864062, 864053)
 
   measurement_numbers_10Hz <- c(6, 596, 35996, 647996, 611996)
@@ -47,10 +46,11 @@ local({
 
   # Binfilename set as NA
   file_data_10Hz <- c(
-    "048297_1619380675_1_16859", "10Hz_calibration_file.bin", 0.775, 0.7310842, "JL", "", 1619377075, "2021-04-25T19:57:55+01:00",
-    "", NA, 1619468665, "2021-04-26T21:24:25+01:00", 16859, 1619478000, "GENEActiv 1.1", "11-Jan-18", "Ver4.08a date14Jul14", "048297",
+    "048297_1619380675_1_16862", "10Hz_calibration_file_20Nov25.bin", 0.775, 0.7310842, "JL",
+    "First line of config notes. Second line of config notes.", 1619377075, "2021-04-25T19:57:55+01:00",
+    "", "First line of extract notes. Second line of extract notes.", 1619468665, "2021-04-26T21:24:25+01:00", 16862, 1619478000, "GENEActiv 1.1", "11-Jan-18", "Ver4.08a date14Jul14", "048297",
     50399, 50400, 1619467200, "2021-04-26T21:00:00+01:00", 10, "26-Apr-21", 1619416801, "2021-04-26T07:00:01+01:00",
-    "Activinsights", "Calibration", "", "", "", "", "", "", "", "JL",
+    "Activinsights", "Calibration", "", "", "", "", "First line of subject notes. Second line of subject notes.", "", "", "JL",
     "Verification", "+01:00", 3600, "4.1642", "4.1791", ""
   )
 
@@ -184,7 +184,7 @@ local({
 
   ## Binfile summary
   expected_summary_path <- c(
-    "048297_1619380675_1_16859", "10Hz_calibration_file.bin", "0.775",
+    "048297_1619380675_1_16862", "10Hz_calibration_file_20Nov25.bin", "0.775",
     "2021-04-25T19:57:55+01:00", "2021-04-26T21:24:25+01:00", "GENEActiv 1.1",
     "048297", "50399", "10", "2021-04-26T07:00:01+01:00", "2021-04-26T21:00:00+01:00",
     "Activinsights", "Calibration", "", "+01:00", "4.1642", "4.1791", "", "", NA, NA, NA, NA
@@ -197,11 +197,11 @@ local({
   )
 
   expected_summary_MPI_full <- c(
-    "048297_1619380675_1_16859", "10Hz_calibration_file.bin", "0.775",
+    "048297_1619380675_1_16862", "10Hz_calibration_file_20Nov25.bin", "0.775",
     "2021-04-25T19:57:55+01:00", "2021-04-26T21:24:25+01:00", "GENEActiv 1.1",
     "048297", "50399", "10", "2021-04-26T07:00:01+01:00", "2021-04-26T21:00:00+01:00",
     "Activinsights", "Calibration", "", "+01:00", "4.1642", "4.1791", "",
-    "", "2", "84", "44436", "0"
+    "", "2", "76", "50399", "0"
   )
 
   test_that("Binfile summary when a binfile path is supplied is correct", {
@@ -218,5 +218,116 @@ local({
 
   test_that("Binfile summary when a full MPI is supplied is correct", {
     expect_equal(as.character(unlist(summary_MPI_full)), expected_summary_MPI_full)
+  })
+})
+
+# Test the overridden methods of get_UniqueBinFileIdentifier
+local({
+  # Prepare a temp folder with some bin files to process
+  test_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(test_folder)) dir.create(test_folder)
+
+  # Ensure there aren't any existing output files in the temp directory
+  existing_files <- list.files(test_folder,
+    pattern = "\\.rds || \\.csv || \\.bin",
+    full.names = TRUE, recursive = TRUE
+  )
+  if (length(existing_files) > 0) {
+    cat("Deleting existing files from temp directory\n")
+    result <- lapply(existing_files, FUN = function(x) {
+      cat(paste("Deleting", x, "\n"))
+      file.remove(x)
+    })
+    expect_true(all(result == TRUE))
+  }
+  existing_dirs <- list.dirs(test_folder)
+  existing_dirs <- existing_dirs[-which(sapply(existing_dirs, function(x) test_folder %in% x))] # remove test folder from the list
+  result_dir <- lapply(existing_dirs, FUN = function(x, test_folder) {
+    if (x != test_folder) {
+      cat(paste("Deleting", x, "\n"))
+      unlink(x)
+    }
+  }, test_folder)
+  if (length(existing_dirs) > 0) expect_true(all(result_dir == TRUE))
+
+  # # Move bin files to temp dir for processing
+  bin_files <- c("10Hz_calibration_file_20Nov25.bin", "100650Hz_file.bin", "1008667Hz.bin")
+  result <- file.copy(
+    file.path(system.file("extdata", package = "GENEAcore"), bin_files),
+    test_folder
+  )
+  expect_true(all(result == TRUE))
+
+  test_files <- file.path(test_folder, bin_files)
+  expected_results <- data.frame(cbind(
+    "filename" = c(
+      "10Hz_calibration_file_20Nov25.bin",
+      "100650Hz_file.bin",
+      "1008667Hz.bin"
+    ),
+    "id" = c(
+      "048297_1619380675_1_16862",
+      "000030_1686916921_1_1599",
+      "000030_1686922297_1_2989"
+    )
+  ))
+
+  # Get the unique Id for a single file
+  id <- get_UniqueBinFileIdentifier(test_files[1])
+  expect_equal(id, expected_results[expected_results$filename == basename(test_files[1]), "id"])
+
+  # Get the unique Id for a directory of files
+  ids <- get_UniqueBinFileIdentifier(test_folder)
+  for (i in 1:length(test_files)) {
+    # Note test_files and ids won't necessarily be in the same order, ignore_attr to ignore the names, only test the value
+    expect_equal(ids[i], expected_results[expected_results$filename == basename(names(ids[i])), "id"], ignore_attr = TRUE)
+  }
+
+  # Get the unique Id for the file contents
+  con <- file(test_files[1], "r")
+  binfile <- readLines(con, skipNul = TRUE)
+  close(con)
+  id <- get_UniqueBinFileIdentifier(binfile)
+  expect_equal(id, expected_results[expected_results$filename == basename(test_files[1]), "id"], ignore_attr = TRUE)
+
+  # Get the unique Id for an invalid file path
+  expect_warning(get_UniqueBinFileIdentifier(bin_files[1]),
+    regexp = "get_UniqueBinFileIdentifier: Unrecognised input type for:"
+  )
+})
+
+
+local({
+  output_folder <- file.path(tempdir(), "GENEAcore")
+  if (!dir.exists(output_folder)) dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
+
+  # Delete all MPI files generated
+  files <- list.files(output_folder, pattern = "\\.(rds|csv)$", full.names = TRUE)
+  file.remove(files)
+
+  print(files)
+
+
+  binfile_name_10Hz <- file.path(system.file("extdata", package = "GENEAcore"), "10Hz_calibration_file_20Nov25.bin")
+  con_10Hz <- file(binfile_name_10Hz, "r")
+  binfile_10Hz <- readLines(con_10Hz, skipNul = TRUE)
+  close(con_10Hz)
+  binfile_name <- binfile_name_10Hz
+
+  MPI_10Hz <- create_MPI(binfile_10Hz, binfile_name, output_folder)
+  MPI_10Hz <- detect_nonmovement(binfile_10Hz, binfile_name, output_folder)
+
+  MPI_10Hz <- calc_autocalparams(
+    binfile_10Hz, binfile_name, output_folder,
+    MPI_10Hz$non_movement$sphere_points
+  )
+
+  print(output_folder)
+
+  checkmpi_res <- check_MPI(output_folder, print_output = TRUE)
+  test_that("check_MPI runs without errors", {
+    expect_true(any(grepl("Bin file:", checkmpi_res$output)))
+    expect_equal(length(checkmpi_res$output), 12)
+    expect_equal(checkmpi_res$results[["048297_1619380675_1_16862_MPI.rds"]]$file_data$BinfileName, "10Hz_calibration_file_20Nov25.bin")
   })
 })

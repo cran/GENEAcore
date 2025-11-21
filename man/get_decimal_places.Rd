@@ -16,13 +16,6 @@ Decimal place integer.
 Get Decimal Places
 }
 \details{
-Function to determine the number of decimal places based on column name.
+Internal function to determine the number of decimal places based on column name.
 }
-\examples{
-epochs_df <- data.frame(
-  "x.mean" = c(0.1111, 0.1222, 0.1333, 0.1444),
-  "y.mean" = c(0.2111, 0.2222, 0.2333, 0.2444),
-  "light.mean" = c(1.25, 1.73, 1.99, 2.02)
-)
-dp <- get_decimal_places(epochs_df[1])
-}
+\keyword{internal}

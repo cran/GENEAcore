@@ -1,6 +1,6 @@
 #' Aggregate Epochs
 #'
-#' @details Wrapper function that calls \code{aggregatePeriods} for epochs (duration of fixed length).
+#' @details Wrapper function that calls \code{aggregate_periods} for epochs (duration of fixed length).
 #' @param time_series Data frame to be aggregated.
 #' @param measure Name of the measure columns to be included.
 #' @param time Name of the time column.
@@ -23,21 +23,21 @@
 #'   0.021042388, 2.4780338, 2.437488989, 2.632635727
 #' )
 #' data <- data.frame(timestamp, value)
-#' aggregated <- aggregateEpochs(data,
+#' aggregated <- aggregate_epochs(data,
 #'   duration = 5,
 #'   measure = "value",
 #'   sample_frequency = 1,
 #'   first_epoch_timestamp = 1619424005,
 #'   time = "timestamp"
 #' )
-aggregateEpochs <- function(time_series,
-                            measure = "AGSA",
-                            time = "timestamp",
-                            sample_frequency,
-                            duration = NA,
-                            first_epoch_timestamp = NA,
-                            fun = mean) {
-  return(aggregatePeriods(time_series,
+aggregate_epochs <- function(time_series,
+                             measure = "AGSA",
+                             time = "timestamp",
+                             sample_frequency,
+                             duration = NA,
+                             first_epoch_timestamp = NA,
+                             fun = mean) {
+  return(aggregate_periods(time_series,
     measure = measure,
     time = time,
     sample_frequency = sample_frequency,
@@ -49,7 +49,7 @@ aggregateEpochs <- function(time_series,
 
 #' Aggregate Events
 #'
-#' @details Wrapper function that calls \code{aggregatePeriods} for events (duration of variable length).
+#' @details Wrapper function that calls \code{aggregate_periods} for events (duration of variable length).
 #' @param time_series Data frame to be aggregated.
 #' @param measure Name of the measure columns to be included.
 #' @param time Name of the time column.
@@ -74,7 +74,7 @@ aggregateEpochs <- function(time_series,
 #' data <- data.frame(timestamp, value)
 #' event_start <- c(1, 5, 10)
 #' event_end <- c(4, 9, 12)
-#' aggregated_events <- aggregateEvents(data,
+#' aggregated_events <- aggregate_events(data,
 #'   events = data.frame(start = event_start, end = event_end),
 #'   measure = "value",
 #'   time = "timestamp",
@@ -83,15 +83,15 @@ aggregateEpochs <- function(time_series,
 #'   sample_frequency = 1,
 #'   fun = sum
 #' )
-aggregateEvents <- function(time_series,
-                            measure = "AGSA",
-                            time = "timestamp",
-                            sample_frequency,
-                            events = NA,
-                            start_time = "start",
-                            end_time = "end",
-                            fun = mean) {
-  return(aggregatePeriods(time_series,
+aggregate_events <- function(time_series,
+                             measure = "AGSA",
+                             time = "timestamp",
+                             sample_frequency,
+                             events = NA,
+                             start_time = "start",
+                             end_time = "end",
+                             fun = mean) {
+  return(aggregate_periods(time_series,
     measure = measure,
     time = time,
     sample_frequency = sample_frequency,
@@ -118,21 +118,21 @@ aggregateEvents <- function(time_series,
 #' @return Data frame of aggregated epochs or events.
 #' @export
 #' @importFrom stats aggregate
-aggregatePeriods <- function(time_series,
-                             measure = "AGSA",
-                             time = "timestamp",
-                             sample_frequency,
-                             duration = NA,
-                             first_epoch_timestamp = NA,
-                             events = NA,
-                             start_time = "start",
-                             end_time = "end",
-                             fun = mean) {
+aggregate_periods <- function(time_series,
+                              measure = "AGSA",
+                              time = "timestamp",
+                              sample_frequency,
+                              duration = NA,
+                              first_epoch_timestamp = NA,
+                              events = NA,
+                              start_time = "start",
+                              end_time = "end",
+                              fun = mean) {
   # Determine whether we are processing epochs or events
   EPOCH <- "EPOCH"
   EVENT <- "EVENT"
   mode <- ifelse(is.na(duration), EVENT, EPOCH)
-  if (sample_frequency == 0) stop("aggregateEpochs: Sample frequency not defined")
+  if (sample_frequency == 0) stop("aggregate_epochs: Sample frequency not defined")
 
   if (mode == EPOCH) {
     # Epoch specific processing
@@ -142,7 +142,7 @@ aggregatePeriods <- function(time_series,
     measurements_per_epoch <- duration * sample_frequency
     # epochs_times <- seq(from = first_epoch_timestamp, by = measurements_per_epoch, to = max(time_series[, time]))
     start_index <- match(first_epoch_timestamp, time_series[, time], nomatch = NA)
-    if (is.na(start_index)) stop("aggregateEpochs: Start time not found")
+    if (is.na(start_index)) stop("aggregate_epochs: Start time not found")
 
     max_epoch_number <- (nrow(time_series) - start_index + 1) / measurements_per_epoch
     period_number <- c(
@@ -153,7 +153,7 @@ aggregatePeriods <- function(time_series,
   } else {
     # Event specific processing
     if (exists("events") && is.data.frame(get("events"))) {
-      period_number <- createEventMapping(events, start_time, end_time, nrow(time_series))
+      period_number <- create_event_mapping(events, start_time, end_time, nrow(time_series))
       if (is.na(match(0, period_number))) {
         epoch_durations <- c((events[, end_time] - events[, start_time] + 1) / sample_frequency)
       } else {
@@ -166,11 +166,12 @@ aggregatePeriods <- function(time_series,
 
   result <- aggregate(time_series[, measure], by = list(period_number), FUN = fun)
 
+
   # Measure can be multiple columns
   if (is.matrix(result[, 2])) {
     # Multiple functions were applied on multiple columns
     function_output_names <- colnames(result[, 2])
-    output_names <- apply(expand.grid(function_output_names, measure), 1, function(x) paste0(x[2], ".", x[1]))
+    output_names <- apply(expand.grid(function_output_names, measure), 1, function(x) paste0(x[2], x[1]))
     # Expand each of the "matrix""array" into a single data frame
     temp <- data.frame(result[, 1])
     for (i in 1:length(measure)) {
@@ -190,16 +191,22 @@ aggregatePeriods <- function(time_series,
   df <- data.frame(
     time = time_series[epoch_start_index, time],
     result,
-    duration = round(epoch_durations, digits = 1)
+    Duration = round(epoch_durations, digits = 0)
   )
 
-  # Remove columns that contain 'max' except 'light.max' and remove 'light.sd'
-  df <- df[, !(grepl("max", names(df)) & names(df) != "light.max") &
-    !names(df) %in% "light.sd"]
+  # Remove columns that contain 'Max' except 'LightMax' and remove Light, AGSA and ENMO SD
+  df <- df[, !(grepl("Max", names(df)) & names(df) != "LightMax") &
+    !names(df) %in% "LightSD" &
+    !names(df) %in% "AGSASD" &
+    !names(df) %in% "ENMOSD"]
 
   df <- df[df$period != 0, ] # drop event 0 as it represents "inter-event" times
 
-  colnames(df)[1:2] <- c(time, ifelse(mode == EPOCH, "epoch_number", "event_number"))
+  if (mode == EPOCH) { # exclude partial epochs
+    df <- df[1:floor(max_epoch_number), ]
+  }
+
+  colnames(df)[1:2] <- c(time, ifelse(mode == EPOCH, "EpochNumber", "EventNumber"))
 
   return(df)
 }
@@ -220,8 +227,8 @@ aggregatePeriods <- function(time_series,
 #'   "end" = c(4, 9, 14, 19)
 #' )
 #' time_series <- rnorm(25)
-#' period_number <- createEventMapping(events, "start", "end", length(time_series))
-createEventMapping <- function(events, start_time, end_time, max_row_number) {
+#' period_number <- create_event_mapping(events, "start", "end", length(time_series))
+create_event_mapping <- function(events, start_time, end_time, max_row_number) {
   if (nrow(events) > 1) {
     events <- cbind(
       event_number = cbind(seq_len(nrow(events))),
@@ -251,4 +258,37 @@ createEventMapping <- function(events, start_time, end_time, max_row_number) {
     event_mapping <- c(event_mapping, rep(0, max_row_number - length(event_mapping)))
   }
   return(event_mapping)
+}
+
+## Deprecated functions
+
+#' @rdname aggregate_epochs
+#' @param ... Additional arguments passed to internal aggregation functions.
+#' @export
+aggregateEpochs <- function(...) {
+  .Deprecated("aggregate_epochs")
+  aggregate_epochs(...)
+}
+
+#' @rdname aggregate_events
+#' @export
+aggregateEvents <- function(...) {
+  .Deprecated("aggregate_events")
+  aggregate_events(...)
+}
+
+#' @rdname aggregate_events
+#' @param ... Additional arguments passed to internal aggregation functions.
+#' @export
+aggregatePeriods <- function(...) {
+  .Deprecated("aggregate_periods")
+  aggregate_periods(...)
+}
+
+#' @rdname aggregate_events
+#' @param ... Additional arguments passed to internal aggregation functions.
+#' @export
+createEventMapping <- function(...) {
+  .Deprecated("create_event_mapping")
+  create_event_mapping(...)
 }

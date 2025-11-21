@@ -19,8 +19,4 @@ Check Time Format
 Internal function to parse and check validity of time string
 passed as parameter.
 }
-\examples{
-CutTime24Hr <- "15:00"
-cut_time <- check_time_format(CutTime24Hr)
-}
 \keyword{internal}

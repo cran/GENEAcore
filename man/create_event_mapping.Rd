@@ -32,3 +32,4 @@ events <- data.frame(
 time_series <- rnorm(25)
 period_number <- create_event_mapping(events, "start", "end", length(time_series))
 }
+\keyword{internal}

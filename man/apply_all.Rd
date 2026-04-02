@@ -22,3 +22,4 @@ z <- c(0.27722, 0.20296, 0.35092, 0.27459)
 calibrated <- data.frame(x, y, z)
 calibrated <- apply_all(calibrated)
 }
+\keyword{internal}

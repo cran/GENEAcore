@@ -22,3 +22,4 @@ Function to create a UniqueBinFileIdentifier from a GENEActiv bin file.
 binfile_directory <- system.file("extdata", package = "GENEAcore")
 UniqueBinFileIdentifiers <- get_UniqueBinFileIdentifier.dir(binfile_directory)
 }
+\keyword{internal}

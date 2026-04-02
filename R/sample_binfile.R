@@ -6,16 +6,16 @@
 #' @param binfile Text lines read from an open connection to a bin file.
 #' @param binfile_path Path to the bin file to be processed.
 #' @param output_folder Path to the folder containing GENEAcore run outputs and Measurement Period Information (MPI) files.
-#' @param start_time Time stamp to start the read from, default start of file.
-#' @param end_time Time stamp to end the read from, default end of file.
+#' @param start_time Time stamp to start the data read, default start of file.
+#' @param end_time Time stamp to end the data read, default end of file.
 #' @param downsample Logical to determine whether to downsample the file, default TRUE.
 #' @param output_csv Allow outputs of bin file sampling to be saved as CSV.
-#' @param save_raw Save daily raw sampled data as RDS to for quicker reprocessing, default FALSE.
+#' @param save_raw Save raw sampled data as RDS for quicker reprocessing, default FALSE.
 #' @return List of 1Hz downsampled data or raw sample data.
 #' @importFrom utils capture.output
 #' @export
 #' @examples
-#' binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+#' binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 #' output_folder <- tempdir()
 #' con <- file(binfile_path, "r")
 #' binfile <- readLines(con, skipNul = TRUE)

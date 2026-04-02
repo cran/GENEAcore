@@ -1,3 +1,29 @@
+# GENEAcore 1.2.0
+
+## New features
+* `geneacore()` main wrapper is restructured to a 4-part analysis architecture
+* `geneacore()` wrapper optional parameters are passed to the function as a configurable controls list
+* Integration of new behavioural bout functions to be run with events outputs only in `geneabout()`
+* Produce daily aggregate activity and sleep measures with option to include participant information
+* Function to generate COEL Behavioural Atoms JSON
+
+# GENEAcore 1.1.3
+
+## New features
+* New measurement device 'GENEActiv 1.3' added to `apply_calibration()`
+* Non-contiguous files will be read and aggregated as normal with a new last timestamp
+* Output folders and MPI files are not created for non-valid GENEActiv bin files
+
+## Minor improvements
+* Improved handling of invalid inputs: folders without `.bin` files or single files without the `.bin` suffix
+
+## Bug fixes
+* Fixed non-wear detection that was broken in 1.1.0
+* Days with only one partial epoch is not returned as an aggregated output
+* Date of Birth 1900-01-01 written to MPI as blank field
+* MPI output is now saved when a bin file generates only an MPI error
+* Non-movement is still calculated when there is a single still event
+
 # GENEAcore 1.1.2
 
 ## New features

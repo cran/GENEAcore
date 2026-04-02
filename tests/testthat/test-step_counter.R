@@ -1,12 +1,12 @@
 local({
-  folder_path <- system.file("extdata", package = "GENEAcore")
-  unlink(file.path(folder_path, "*.csv"))
-  unlink(file.path(folder_path, "*.rds"))
+  folder_path <- testthat::test_path("testdata", "OK")
 
   ## 50Hz 1.2
   binfile_path_50 <- file.path(folder_path, "100650Hz_file.bin")
   output_folder <- file.path(tempdir(), "GENEAcore")
   if (!dir.exists(output_folder)) dir.create(output_folder)
+  unlink(file.path(output_folder, "*.csv"))
+  unlink(file.path(output_folder, "*.rds"))
 
   con <- file(binfile_path_50, "r")
   binfile_50 <- readLines(con, skipNul = TRUE)
@@ -44,4 +44,5 @@ local({
   test_that("Step counter outputs match GENEAclassify", {
     expect_equal(steps_Gcore_20, steps_Gclassify_20[1:2])
   })
+
 })

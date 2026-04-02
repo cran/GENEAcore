@@ -22,15 +22,15 @@ sample_binfile(
 
 \item{output_folder}{Path to the folder containing GENEAcore run outputs and Measurement Period Information (MPI) files.}
 
-\item{start_time}{Time stamp to start the read from, default start of file.}
+\item{start_time}{Time stamp to start the data read, default start of file.}
 
-\item{end_time}{Time stamp to end the read from, default end of file.}
+\item{end_time}{Time stamp to end the data read, default end of file.}
 
 \item{downsample}{Logical to determine whether to downsample the file, default TRUE.}
 
 \item{output_csv}{Allow outputs of bin file sampling to be saved as CSV.}
 
-\item{save_raw}{Save daily raw sampled data as RDS to for quicker reprocessing, default FALSE.}
+\item{save_raw}{Save raw sampled data as RDS for quicker reprocessing, default FALSE.}
 }
 \value{
 List of 1Hz downsampled data or raw sample data.
@@ -44,7 +44,7 @@ to 1Hz. This can read the whole of the file or just a portion of it by
 setting the start_time and end_time parameters.
 }
 \examples{
-binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 output_folder <- tempdir()
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)

@@ -19,9 +19,10 @@ Generate Unique Bin File Identifier
 Function to create a UniqueBinFileIdentifier from a GENEActiv bin file.
 }
 \examples{
-binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)
 close(con)
 UniqueBinFileIdentifier <- get_UniqueBinFileIdentifier(binfile)
 }
+\keyword{internal}

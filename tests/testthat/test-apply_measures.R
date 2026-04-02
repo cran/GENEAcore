@@ -55,4 +55,20 @@ local({
   test_that("Radians calculation is correct", {
     expect_equal((apply_radians(data)$Radians), expected_radians)
   })
+
+  test_that("AGSA calculation is correct", {
+    expect_equal((apply_all(data)$AGSA), expected_AGSA)
+  })
+
+  test_that("ENMO calculation is correct", {
+    expect_equal((apply_all(data)$ENMO), expected_ENMO)
+  })
+
+  test_that("UpDown calculation is correct", {
+    expect_equal((apply_all(data)$UpDown), expected_updown)
+  })
+
+  test_that("Degrees calculation is correct", {
+    expect_equal((apply_all(data)$Degrees), expected_degrees)
+  })
 })

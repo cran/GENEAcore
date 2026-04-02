@@ -52,4 +52,25 @@ local({
   test_that("Short transition after index 1 is removed", {
     expect_equal(remove_short_transitions(changepoints3, cut_time, 5), expected_transitions3)
   })
+
+
+  test_dir <- file.path(tempdir(), "transitions_test")
+  dir.create(test_dir, showWarnings = FALSE)
+  bin_files <- file.path(system.file("extdata", package = "GENEAcore"), "10Hz_calibration_file_20Nov25.bin")
+  result <- file.copy(
+    bin_files,
+    test_dir
+  )
+  expect_true(all(result == TRUE))
+
+  geneacore_part1(data_folder = test_dir)
+
+  measurements <- readRDS(file.path(test_dir, "/10Hz_calibration_file_20Nov25/048297_1619380675_1_16862_downsample.rds"))
+
+  transitions <- detect_transitions(measurements)
+
+  test_that("Expected number of transitions", {
+    expect_equal(nrow(transitions), 71)
+  })
+
 })

@@ -11,7 +11,7 @@ step_counter(
   filter_order = 2,
   boundaries = c(0.5, 5),
   Rp = 3,
-  hysteresis = 0.05,
+  step_hysteresis = 0.05,
   fun = c("GENEAcount", "mean", "sd", "stepdiff")
 )
 
@@ -32,7 +32,7 @@ passed to argument W of \code{\link[signal]{butter}} or \code{\link[signal]{cheb
 
 \item{Rp}{the decibel level that the cheby filter takes, see \code{\link[signal]{cheby1}}.}
 
-\item{hysteresis}{The hysteresis applied after zero crossing. (default 100mg)}
+\item{step_hysteresis}{The hysteresis applied after zero crossing of the bandpass filtered y-axis signal.}
 
 \item{fun}{character vector naming functions by which to summarize steps.
 "count" is an internally implemented summarizing function that returns step count.}

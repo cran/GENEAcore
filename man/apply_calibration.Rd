@@ -13,8 +13,8 @@ apply_calibration(sensor_data, cal_params, measurement_device, use_temp = TRUE)
 \item{cal_params}{Calibration parameters for acceleration and
 light from MPI.}
 
-\item{measurement_device}{Name of the measurement device used "GENEActiv 1.1"
-or "GENEActiv 1.2".}
+\item{measurement_device}{Name of the measurement device used "GENEActiv 1.1",
+"GENEActiv 1.2" or "GENEActiv 1.3".}
 
 \item{use_temp}{Allows auto-calibration to be run with and without
 temperature compensation.}

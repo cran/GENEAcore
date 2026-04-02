@@ -3,11 +3,17 @@ local({
   # package GENEAread
   # Note: Half second start whole integer frequency tested in test-MPI_calibrate.R
 
-  folder_path <- system.file("extdata", package = "GENEAcore")
-  unlink(file.path(folder_path, "*.csv"))
-  unlink(file.path(folder_path, "*.rds"))
+  test_folder <- tempfile("GENEAcore_")
+  dir.create(test_folder)
 
-  binfile_path <- file.path(folder_path, "One_page_bin_file.bin")
+  ok <- file.copy(
+    from = testthat::test_path("testdata", "OK", "20Hz_file.bin"),
+    to = test_folder
+  )
+
+  expect_true(all(ok))
+
+  binfile_path <- file.path(test_folder, "20Hz_file.bin")
 
   con <- file(binfile_path, "r")
   binfile <- readLines(con, skipNul = TRUE)
@@ -21,22 +27,20 @@ local({
     print(paste0("test-MPI_sample_binfile.R: Deleting ", afile))
     rm(afile)
   }
-
-  output_folder <- file.path(tempdir(), "GENEAcore")
-  if (!dir.exists(output_folder)) dir.create(output_folder)
+  output_folder <- file.path(test_folder, "20Hz_file")
   downsampled_binfile <- sample_binfile(binfile, binfile_path, output_folder)
   rawdata <- sample_binfile(binfile, binfile_path, output_folder, downsample = FALSE)
 
   library(GENEAread)
-  expected_downsample <- as.data.frame(read.bin(binfile_path, calibrate = FALSE, downsample = 100)$data.out, mmap.load = FALSE)
+  expected_downsample <- as.data.frame(read.bin(binfile_path, calibrate = FALSE, downsample = 20)$data.out, mmap.load = FALSE)
   expected_downsample[, c("x", "y", "z")] <- expected_downsample[, c("x", "y", "z")] / 256 # Apply scaling factor
   names(expected_downsample)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
-  expected_downsample$TimeUTC <- expected_downsample$TimeUTC - 3600 # Compensate for time zone bug in GENEAread
+  expected_downsample$TimeUTC <- expected_downsample$TimeUTC # Compensate for time zone bug in GENEAread
 
   expected_rawdata <- as.data.frame(read.bin(binfile_path, calibrate = FALSE)$data.out, mmap.load = FALSE)
   expected_rawdata[, c("x", "y", "z")] <- expected_rawdata[, c("x", "y", "z")] / 256 # Apply scaling factor
   names(expected_rawdata)[c(1:7)] <- c("TimeUTC", "x", "y", "z", "Light", "Button", "Temp") # Adjust column names
-  expected_rawdata$TimeUTC <- expected_rawdata$TimeUTC - 3600 # Compensate for time zone bug in GENEAread
+  expected_rawdata$TimeUTC <- expected_rawdata$TimeUTC # Compensate for time zone bug in GENEAread
 
   test_that("Raw sampled data for whole second start integer frequency file matches GENEAread", {
     expect_equal(rawdata[, 1:7], expected_rawdata, tolerance = 1e-6)
@@ -48,7 +52,7 @@ local({
 
   # Recurring decimal file
 
-  binfile_path <- file.path(folder_path, "1008667Hz.bin")
+  binfile_path <- testthat::test_path("testdata", "OK", "1008667Hz_file.bin")
 
   con <- file(binfile_path, "r")
   binfile <- readLines(con, skipNul = TRUE)
@@ -65,6 +69,8 @@ local({
 
   output_folder <- file.path(tempdir(), "GENEAcore")
   if (!dir.exists(output_folder)) dir.create(output_folder)
+  unlink(file.path(output_folder, "*.csv"))
+  unlink(file.path(output_folder, "*.rds"))
   downsampled_binfile <- sample_binfile(binfile, binfile_path, output_folder)
   rawdata <- sample_binfile(binfile, binfile_path, output_folder, downsample = FALSE)
 
@@ -89,7 +95,7 @@ local({
 
   # Half second start file
 
-  binfile_path <- file.path(folder_path, "667Hz.bin")
+  binfile_path <- testthat::test_path("testdata", "OK", "667Hz_file.bin")
 
   con <- file(binfile_path, "r")
   binfile <- readLines(con, skipNul = TRUE)
@@ -105,6 +111,8 @@ local({
   }
 
   output_folder <- file.path(tempdir(), "GENEAcore")
+  unlink(file.path(output_folder, "*.csv"))
+  unlink(file.path(output_folder, "*.rds"))
   if (!dir.exists(output_folder)) dir.create(output_folder)
   downsampled_binfile <- sample_binfile(binfile, binfile_path, output_folder)
   rawdata <- sample_binfile(binfile, binfile_path, output_folder, downsample = FALSE)

@@ -4,12 +4,14 @@
 \alias{MPI_summary}
 \title{MPI Summary}
 \usage{
-MPI_summary(input, recursive = TRUE)
+MPI_summary(input, recursive = TRUE, identifier_mapping_record = NULL)
 }
 \arguments{
 \item{input}{MPI path - single MPI file or folder of MPI files.}
 
 \item{recursive}{TRUE applies the operation to all nested elements.}
+
+\item{identifier_mapping_record}{File path of the exported identifier_mapping_record CSV file.}
 }
 \value{
 Data frame of MPI summary.

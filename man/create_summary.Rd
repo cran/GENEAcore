@@ -4,7 +4,12 @@
 \alias{create_summary}
 \title{Create Summary}
 \usage{
-create_summary(input, path_type, recursive)
+create_summary(
+  input,
+  path_type,
+  recursive = TRUE,
+  identifier_mapping_record = NULL
+)
 }
 \arguments{
 \item{input}{Input type of either a bin file path, MPI path or an MPI object.}
@@ -12,6 +17,8 @@ create_summary(input, path_type, recursive)
 \item{path_type}{The file type within the folder to create summary for.}
 
 \item{recursive}{TRUE applies the operation to all nested elements.}
+
+\item{identifier_mapping_record}{File path of the exported identifier_mapping_record CSV file.}
 }
 \value{
 Data frame of bin file or MPI summary.
@@ -22,3 +29,4 @@ Create Summary
 \details{
 Function to create a summary of key information of a bin file or MPI path.
 }
+\keyword{internal}

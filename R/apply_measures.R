@@ -19,7 +19,6 @@ apply_AGSA <- function(x) {
 #' @param x Calibrated acceleration data frame.
 #' @return Measure column appended to end of calibrated data frame.
 #' @export
-#'
 #' @examples
 #' x <- c(0.14268, 0.21757, -0.529, -0.36383)
 #' y <- c(0.26385, 0.27295, 0.29220, 0.79510)
@@ -35,7 +34,6 @@ apply_ENMO <- function(x) {
 #' Apply Elevation (UpDown)
 #'
 #' @param x Calibrated acceleration data frame.
-#'
 #' @return Measure column appended to end of calibrated data frame.
 #' @export
 #' @examples
@@ -96,6 +94,7 @@ apply_radians <- function(x) {
 #' @param x Calibrated acceleration data frame.
 #' @return Measures columns appended to end of calibrated data frame.
 #' @export
+#' @keywords internal
 #' @examples
 #' x <- c(0.14268, 0.21757, -0.529, -0.36383)
 #' y <- c(0.26385, 0.27295, 0.29220, 0.79510)

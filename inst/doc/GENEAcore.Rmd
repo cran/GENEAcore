@@ -8,8 +8,11 @@ output:
     highlight: "textmate"
 vignette: >
   %\VignetteIndexEntry{GENEAcore}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
 
 ```{r, include = FALSE}
@@ -30,19 +33,24 @@ The R package GENEAcore provides functions and analytics to read in and summaris
 This vignette provides a general introduction on how to use GENEAcore.
 
 For a list of breaking changes when migrating from Version 1.0.1 to 1.1.x, please see the Breaking Changes vignette.
+
 ```{r, eval = FALSE}
 vignette("breaking-changes", package = "GENEAcore")
 ```
 
-For descriptions and units of all events and epochs measures, please see the Data Dictionary vignette.
-```{r, eval = FALSE}
-browseURL(system.file("extdata", "GENEAcore_Data_Dictionary_21Nov2025.pdf", package = "GENEAcore"))
-```
+For descriptions and units of all events, epochs and daily measures, please see the Data Dictionary vignette.
 
+```{r, eval = FALSE}
+browseURL(system.file("extdata", "GENEAcore_Data_Dictionary_2Apr26.pdf", package = "GENEAcore"))
+```
 
 ### ii. Install R and RStudio
 
-To begin, download and install [R](https://cran.r-project.org/). An introduction to the R environment can be found in the [R manual](https://cran.r-project.org/doc/manuals/r-release/R-intro.pdf), which will help familiarize users with its basics. We also recommend downloading and installing the IDE (integrated development environment) [RStudio](https://posit.co/products/open-source/rstudio/) after R has been installed. RStudio provides the user with more than the console to work with and gives the option of having a script, console, view of the R environment and file locations in one window. The list of tips on using RStudio can be found [here](https://posit.co/resources/cheatsheets/).
+To begin, download and install [R](https://cran.r-project.org/).
+An introduction to the R environment can be found in the [R manual](https://cran.r-project.org/doc/manuals/r-release/R-intro.pdf), which will help familiarize users with its basics.
+We also recommend downloading and installing the IDE (integrated development environment) [RStudio](https://posit.co/products/open-source/rstudio/) after R has been installed.
+RStudio provides the user with more than the console to work with and gives the option of having a script, console, view of the R environment and file locations in one window.
+The list of tips on using RStudio can be found [here](https://posit.co/resources/cheatsheets/).
 
 ### iii. Install and Load Package
 
@@ -52,12 +60,15 @@ If installing GENEAcore with its dependencies from CRAN, use a single command:
 install.packages("GENEAcore", dependencies = TRUE)
 ```
 
-Whilst GENEAcore is in development, the easiest way to install the package is to use the tar.gz folder in which this vignette sits inside. GENEAcore has a package dependency that will also need to be installed. Both GENEAcore and its dependency can be installed by running this code in the console:
+Whilst GENEAcore is in development, the easiest way to install the package is to use the tar.gz folder in which this vignette sits inside.
+GENEAcore has a package dependency that will also need to be installed.
+Both GENEAcore and its dependency can be installed by running this code in the console:
 
 ```{r Installing from source, eval = FALSE}
-# Note that R only uses / not \ when referring to a file/directory location
+# Note that R only uses forward slashes / as a file path separator
 install.packages("changepoint")
 install.packages("signal")
+install.packages("jsonlite")
 install.packages("C:/path/to/GENEAcore_1.1.1.tar.gz", repos = NULL, type = "source")
 ```
 
@@ -67,135 +78,192 @@ Once the packages have been installed, load in the libraries:
 library(GENEAcore)
 library(changepoint)
 library(signal)
+library(jsonlite)
 ```
 
 ## Using GENEAcore
 
 ### i. Folder preparation
 
-GENEAcore has been written to process only .bin files extracted from GENEActiv (ActivInsights Ltd) devices. Place all .bin files for analysis in a single folder on your computer. You can organise your analysis folder structure by project, with all files for a specific project stored together.
+GENEAcore has been written to process only .bin files extracted from GENEActiv (ActivInsights Ltd) devices.
+Place all .bin files for analysis in a single folder on your computer.
+You can organise your analysis folder structure by project, with all files for a specific project stored together.
 
-### ii. GENEAcore wrapper function
+### ii. geneacore() wrapper function
 
-The GENEAcore package offers a number of functions and parameters within its processing workflow. To ease user interaction, interactions between functions are managed by a single main function, `geneacore`.
+The GENEAcore package offers a range of functions and configurable parameters that support different stages of the processing workflow. The `geneacore()` functions performs the initial preprocessing of .bin files. To simplify the user experience, `geneacore()` manages the interactions between underlying preprocessing functions.
 
-Sequentially, `geneacore` performs the following:
+Sequentially, `geneacore()` performs the following:
 
 -   Reads in the data
 -   Creates a Measurement Period Information (MPI) file
 -   Downsamples data to 1Hz and detects non-movement points
 -   Calculates auto-calibration parameters
 -   Detects suspected non-wear
--   Detects event transition points using mean and variance changepoints
--   Applies calibration parameters to raw data
+-   Calculates and recommends daily primary rest intervals
+-   Samples then applies calibration parameters to raw data
 -   Applies measure calculations on calibrated data
+-   Detects event transition points using mean and variance changepoints
+-   Calculates step count and cadence
 -   Aggregates and outputs calibrated data into specified fixed epochs or events
+-   Calculates the non-wear and rest coverages for each epoch or event
 
-At a minimum, `geneacore` can be run with just a single parameter; `data_folder` is the folder where the .bin files to be analysed are stored. Outputs are automatically directed to the same data folder. All other parameters are optional with defaults assigned.
+This main wrapper function comprises 3 parts. The processing steps covered by Parts 1, 2 and 3 are detailed in the [GENEAcore functions flowchart](#Appendix.-geneacore-functions-flowchart). 
+
+At a minimum, `geneacore()` can be run with just a single parameter: `data_folder`, which specifies the directory containing the .bin files to be analysed.
+All outputs for a .bin file are automatically saved in a subfolder, named after the .bin file, within the same data folder.
+All other parameters are optional with defaults assigned.
 
 ```{r Running geneacore, eval = FALSE}
 library(GENEAcore)
 geneacore(data_folder = "C:/path/to/datafolder")
 ```
 
-In outline, the optional parameters and their defaults are:
+**Optional arguments**
+
+The main optional parameters and their defaults are:
 
 -   `cut_time_24hr` is the 24 hour time to split days up by. Defaults to **15:00** (3.00pm).
--   `output_epochs` specifies whether epochs should be created as an output. Defaults to **TRUE**. Else, FALSE.
--   `epoch_duration` specifies duration to aggregate epochs by. This will be the duration of each epoch in the outputs. Defaults to **1** second.
--   `output_events` specifies whether events should be created as an output. Defaults to **TRUE**. Else, FALSE.
--   `output_steps` specifies whether step counts and stepping rate should be included in the aggregated epochs or events outputs. Defaults to **FALSE**. Else, TRUE.
--   `output_csv` allows CSV outputs to be saved during epoch and event processing. Defaults to **FALSE** and only RDS files are saved. Else, TRUE.
--   `timer` prints the elapsed processing times for development purposes. Defaults to **FALSE**. Else, TRUE.
+-   `output_epochs` specifies whether epochs should be created as an output. Defaults to **FALSE**.
+-   `epoch_duration` specifies duration in seconds to aggregate epochs by. This will be the duration of each epoch in the outputs. Defaults to **1** second.
+-   `output_events` specifies whether events should be created as an output. Defaults to **TRUE**. Setting this parameter to TRUE also generates behavioural events (bouts) classifications and aggregated daily activity and sleep measures.
+-   `output_steps` specifies whether step counts and stepping rate should be included in the aggregated epochs output. Defaults to **FALSE**. Steps are always calculated during events processing and are required for behavioural events (bouts) classifications.
+-   `output_csv` allows CSV outputs to be saved during epoch and event processing. Defaults to **FALSE** and only RDS files are saved.
+-   `timer` prints the elapsed processing times for development purposes. Defaults to **FALSE**.
+-   `multisession` controls the split of days if running `geneacore_part3` across multiple R sessions. The first value is the current session number and the second is the total number of sessions. The default processes all days in a single session.
+-   `required_processing_hours` specifies the number of hours of wear time in a 24-hour day to be considered a valid day to be sampled and processed. Defaults to **0** hours.
 
-A sample run with all parameters included will be:
+One example of when parameter adjustment is required is when running the `geneacore()` function to generate epoch outputs only. In this case, set `output_events`to `FALSE`, set `output_epochs` to `TRUE` and specify the desired `epoch_duration`.
 
 ```{r Running geneacore with parameters, eval = FALSE}
 library(GENEAcore)
-geneacore(
-  data_folder = "C:/path/to/datafolder",
-  cut_time_24hr = "15:00",
+
+controls_list <- list(
   output_epochs = TRUE,
   epoch_duration = 600, # 10 minutes
   output_events = FALSE,
-  output_steps = FALSE,
   output_csv = TRUE,
-  timer = FALSE
+  required_processing_hours = 4)
+
+geneacore(
+  data_folder = "C:/path/to/datafolder",
+  control = controls_list
 )
 ```
 
 ### iii. Expected outputs
 
-GENEAcore produces the following outputs for each .bin file processed:
-
--   RDS files of the MPI, downsampled data, epochs and events (where selected)
--   CSV files of epochs and events (where selected)
+GENEAcore produces the following outputs for each .bin file processed, where options are enabled:
 
 **MPI**
 
-The MPI (measurement period information) contains header information of the .bin file and meta data essential for downstream file processing and interpretation. The MPI also stores calibration, non-movement and transitions information.
+The MPI (measurement period information) contains header information of the .bin file and meta data essential for downstream file processing and interpretation.
+The MPI also stores calibration and non-movement information.
+The MPI is saved in both RDS and JSON formats but only the RDS is used for downstream processing.
 
 **Downsampled data**
 
 A step prior to detecting non-wear and transition events, the data is first downsampled to 1Hz to improve speed and memory management.
+The downsampled data for the full file is saved in a single RDS file and contains a data frame of columns TimeUTC, x, y, z, Light, Button, Temp and Volts.
+
+**Raw sampled data**
+
+Processed on a daily basis, the raw data is sampled and saved as RDS files.
+Each day's RDS file contains a data frame of columns TimeUTC, x, y, z, Light, Button, Temp and Volts.
+The start and end of a 24-hour day is configured with the `cut_time_24hr` parameter.
 
 **Epochs**
 
-Epochs are a fixed duration aggregation of raw sensor data in SI units. The aggregates include a wide range of statistical processing with epoch duration specified in `epoch_duration`.
+Epochs are a fixed duration aggregation of raw sensor data in SI units.
+The aggregates include a wide range of statistical processing with epoch duration specified in `epoch_duration`.
+Daily epochs outputs are saved in RDS format with the option to save as CSV for further analysis outside of R.
 
 **Events**
 
-Event are a variable duration aggregation of raw sensor data in SI units. The aggregates include a wide range of statistical processing with event durations determined by transitions identified in the MPI. The time of day defined in `cut_time_24hr` adds an additional transition point to mark the start of a day.
-
-The epochs or events can then be used for further analysis within R, e.g., classification of behaviours. It can also be exported as CSV `output_csv = TRUE` for post-processing outside of R.
+Events are a variable duration aggregation of raw sensor data in SI units.
+The aggregates include a wide range of statistical processing with event durations determined by transitions identified during daily processing.
+The time of day defined in `cut_time_24hr` adds an additional transition point to mark the start of a new day.
 
 ### iv. Bin file summary
 
 GENEAcore provides users with the options of running a bin file summary to check the contents and integrity of the bin file.
 
-It is advisable to perform an overview summary of the bin files in your folder to ensure they are suitable for processing. Review the errors generated in the summary and remove any files that are not appropriate to run before proceeding with a full `geneacore` run. Additionally, use this process to identify and eliminate any duplicate files (e.g., identical files with different binfile names).
+It is advisable to perform an overview summary of the bin files in your folder to ensure they are suitable for processing.
+Review the errors generated in the summary and remove any files that are not appropriate to run before proceeding with a full `geneacore()` run.
+Additionally, use this process to identify and eliminate any duplicate files (e.g., identical files with different binfile names).
 
-To generate a summary for a single file, specify only the file path as the input parameter. 
+To generate a summary for a single file, specify only the file path as the input parameter.
 
 ```{r Bin file summary, eval = FALSE}
 # Run summary for a single bin file
 binfile_summary <- binfile_summary("C:/path/to/binfile.bin")
 ```
 
-To create a summary for a folder of files, provide the folder path as the input parameter. This will generate a single summary for all bin files in the folder, including those in subfolders. If you want to exclude bin files in subfolders, use the optional parameter `recursive = FALSE`. By default, `recursive` is set to `TRUE`. 
+To create a summary for a folder of files, provide the folder path as the input parameter.
+This will generate a single summary for all bin files in the folder, including those in subfolders.
+If you want to exclude bin files in subfolders, use the optional parameter `recursive = FALSE`.
+By default, `recursive` is set to `TRUE`.
 
-The summary is assigned to the variable name you have provided. You can then save the data frame to a CSV or RDS as required.
+The summary is assigned to the variable name you have provided.
+You can then save the data frame to a CSV or RDS as required.
 
 ```{r Bin file folder summary, eval = FALSE}
 # Run summary for all bin files in bin files folder only
 binfile_folder_summary <- binfile_summary("C:/path/to/binfilesfolder", recursive = FALSE)
 ```
 
+Note: ConfigTimeISO and ExtractTimeISO appear to be in GMT, but are actually recorded in local PC time with no timezone conversion. Similarly, ConfigTimeUTC and ExtractTimeUTC stored in the MPI are not true UTC values, they are local PC time represented as Unix timestamps.
+
 ### v. MPI summary
 
-After a complete MPI run, you might want to look at a comprehensive summary of your files that include the non-movement and transitions information. To do this, the summary must be generated from MPI RDS files instead of bin files. 
+After a complete MPI run (e.g., `geneacore_part1()`), you might want to look at a comprehensive summary of your files that include the non-movement information.
+To do this, the summary must be generated from MPI RDS files instead of bin files.
 
-To generate a summary for a single MPI file, specify the file path as the input parameter.  
+To generate a summary for a single MPI file, specify the file path as the input parameter.
 
 ```{r MPI summary, eval = FALSE}
 # Run summary for single MPI file
 mpi_summary <- MPI_summary("C:/path/to/MPI.rds")
 ```
 
-To generate a summary for a folder of MPI RDS files, specify the folder path as the input parameter. By default, the summary function looks at all files within the folder, including subfolders. To ignore files in subfolders, specify the parameter `recursive = FALSE`. Do note that `geneacore()` saves all MPI RDS files in their corresponding bin file subfolders. 
+To generate a summary for a folder of MPI RDS files, specify the folder path as the input parameter.
+By default, the summary function looks at all files within the folder, including subfolders.
+To ignore files in subfolders, specify the parameter `recursive = FALSE`.
+Do note that `geneacore()` saves all MPI RDS files in their corresponding bin file subfolders.
 
-The summary is assigned to the variable name you have provided. You can then save the data frame to a CSV or RDS as required. 
+The summary is assigned to the variable name you have provided.
+You can then save the data frame to a CSV or RDS as required.
 
 ```{r MPI folder summary, eval = FALSE}
 # Run summary for all MPI files in a folder
 mpi_folder_summary <- MPI_summary("C:/path/to/MPIfolder")
 ```
 
-## Individual access to functions
+Note: ConfigTimeISO and ExtractTimeISO appear to be in GMT, but are actually recorded in local PC time with no timezone conversion. Similarly, ConfigTimeUTC and ExtractTimeUTC stored in the MPI are not true UTC values, they are local PC time represented as Unix timestamps.
 
-For greater control over your generated outputs, you can execute each function individually with your preferred parameter values. Each function operates on a single bin file at a time. To apply any function to a folder of bin files, you will need to iterate through all the files in the folder and apply each function individually. An example demonstrating this is shown in the Appendix.
+### vi. Other ways to use geneacore
 
-Before executing any function, whether individually or sequentially, you must first configure your bin file and output folder. If running functions sequentially, this setup only needs to be done once per file.
+The main `geneacore()` wrapper function is organised into 3 parts. The processing steps covered by Parts 1, 2 and 3 are detailed in the [GENEAcore functions flowchart](#Appendix.-geneacore-functions-flowchart).
+
+**Part 1** focusses on generating bin file metadata. This includes creation of the MPI, detection of non-movement periods such as still bouts and non-wear, calculation of auto-calibration parameters and estimation of daily rest intervals.
+
+**Part 2** focusses on sampling the raw bin file data on a daily basis for valid days. Each day is saved as an RDS.
+
+**Part 3** performs the main event and epoch processing. For each day, the raw data sampled in Part 2 is calibrated and measures (e.g., AGSA, ENMO) are calculated. Transitions are detected to define events, after which events or epochs are aggregated with step data. Finally, non-wear and rest coverage are assigned to these events or epochs.  
+
+An alternative way to use `geneacore()` is to run the processing pipelines in stages. For example, you may first run `geneacore_part1()`, generate an MPI summary to assess file integrity, and remove any problematic files. The remaining bin files can then be processed with `geneacore_part2()` and `geneacore_part3()` sequentially. You can also split the remaining bin files across multiple new data folders and process them in parallel using separate R sessions. When doing this, it is important to also move across the corresponding output folder (the subfolder named after each bin file) that contains the MPI and the downsampled data.
+
+Processing time for `geneacore_part3()` can also be reduced by using the `multisession` parameter, which enables parallel execution across multiple R sessions. This approach is particularly useful when processing long recordings (e.g. 30 days of data) on systems with sufficient CPU cores. For example, when running three R sessions, setting `multisession = c(1,3)` in the first session, `c(2,3)` in the second, and `c(3,3)` in the third will automatically divide the workload so that each session processes one-third of the total days. This can reduce the total time required to complete daily bout processing.
+
+## Individual access to GENEAcore functions
+
+For greater control over your generated outputs, you can execute each function individually with your preferred parameter values.
+Each function operates on a single bin file at a time.
+To apply any function to a folder of bin files, you will need to iterate through all the files in the folder and apply each function individually.
+An example demonstrating this is shown in the Appendix.
+
+Before executing any function, whether individually or sequentially, you must first configure your bin file and output folder.
+If running functions sequentially, this setup only needs to be done once per file.
 
 ```{r File preparation before individual runs, eval = FALSE}
 binfile_path <- "C:/path/to/binfile"
@@ -206,35 +274,53 @@ binfile <- readLines(con, skipNul = TRUE)
 close(con)
 ```
 
-Creating the Measurement Period Information (MPI) manually for each file is an optional step. The MPI contains metadata used later for sampling, detecting non-movement and transitions, and calculating auto calibration parameters. If you run any of these functions directly, the MPI will be created automatically if it doesn't already exist, so you don't need to create it separately. However, if you prefer to create the MPI manually, here's how you can do it:
+Creating the Measurement Period Information (MPI) manually for each file is an optional step.
+The MPI contains metadata used later for sampling, detecting non-movement and transitions, and calculating auto calibration parameters.
+If you run any of these functions directly, the MPI will be created automatically if it doesn't already exist, so you don't need to create it separately.
+However, if you prefer to create the MPI manually, here's how you can do it:
 
 ```{r Create MPI, eval = FALSE}
 MPI <- create_MPI(binfile, binfile_path, output_folder)
 ```
 
-The MPI is saved in your specified output folder as an RDS file. Make sure to use the same output folder consistently when running the rest of the functions throughout the processing.
+The MPI is saved in your specified output folder as an RDS file.
+Make sure to use the same output folder consistently when running the rest of the functions throughout the processing.
 
 ### i. Sampling your files
 
-The `sample_binfile` function provides two functionalities: downsampling and raw sampling. Both functionalities allow you to sample a portion of the file between two specified timestamps, which are passed to the `start_time` and `end_time` parameters. If no start and end time are specified, the file is sampled from the beginning to the end of the file.
-The sampling output is a matrix with columns for timestamp, x, y, z, light, button, temperature, and voltage. The column headers are TimeUTC, x, y, z, Light, Button, Temp and Volts. In downsampling, measurements are taken at each whole second. In raw sampling, every measurement is included in the output (e.g., at 10Hz, there would be 10 measurements per second).
+The `sample_binfile` function provides two functionalities: downsampling and raw sampling.
+Both functionalities allow you to sample a portion of the file between two specified timestamps, which are passed to the `start_time` and `end_time` parameters.
+If no start and end time are specified, the file is sampled from the beginning to the end of the file.
+The sampling output is a data frame with columns for timestamp, x, y, z, light, button, temperature, and voltage.
+The column headers are TimeUTC, x, y, z, Light, Button, Temp and Volts.
+In downsampling, measurements are taken at each whole second.
+In raw sampling, every measurement is included in the output (e.g., at 10Hz, there would be 10 measurements per second).
 
-**Downsampling** 
+**Downsampling**
 
-Downsampling enhances the efficiency of calculating non-movement, changes in movement, and calibration values, allowing you to quickly review your data without processing all data points. We downsample to 1Hz.
+Downsampling enhances the efficiency of calculating non-movement, changes in movement, and calibration values, allowing you to quickly review your data without processing all data points.
+We downsample to 1Hz.
 
-For a basic downsample run, you only need to specify the bin file, bin file path, and output folder. This will downsample your entire file. 
+For a basic downsample run, you only need to specify the bin file, bin file path, and output folder.
+This will downsample your entire file.
 
 ```{r Downsampling a file default, eval = FALSE}
 # Simple run using default parameter values
-downsampled_measurements <- sample_binfile(binfile, binfile_path, output_folder)
+downsampled_measurements <- sample_binfile(binfile, 
+                                           binfile_path, 
+                                           output_folder)
 ```
 
-If you wish to downsample only a portion of the file, adjust the `start_time` and `end_time` parameters, ensuring both times are in Unix timestamp format. You can also choose to save the downsampled measurements as a CSV by setting `output_csv = TRUE`. By default, only an RDS object is created.
+If you wish to downsample only a portion of the file, adjust the `start_time` and `end_time` parameters, ensuring both times are in Unix timestamp format.
+You can also choose to save the downsampled measurements as a CSV by setting `output_csv = TRUE`.
+By default, only an RDS object is created.
 
 ```{r Downsampling a file with parameters, eval = FALSE}
 # Exposed parameters can be changed
-downsampled_measurements <- sample_binfile(binfile, binfile_path, output_folder,
+downsampled_measurements <- sample_binfile(
+  binfile, 
+  binfile_path, 
+  output_folder,
   start_time = NULL,
   end_time = NULL,
   output_csv = FALSE
@@ -243,18 +329,28 @@ downsampled_measurements <- sample_binfile(binfile, binfile_path, output_folder,
 
 **Raw sampling**
 
-Raw sampling allows you to process all data points in your file by running the `sample_binfile()` function with the parameter `downsample = FALSE`. Raw sampling can be done on the entire file using the basic run or on a specific portion of the file by specifying the start and end times. 
+Raw sampling allows you to process all data points in your file by running the `sample_binfile()` function with the parameter `downsample = FALSE`.
+Raw sampling can be done on the entire file using the basic run or on a specific portion of the file by specifying the start and end times.
 
-By default, raw sampled data is not stored. As a result, reprocessing the same dataset with altered parameters while maintaining the original `start_time` and `end_time` will trigger a new sampling operation. For improved efficiency, you can enable the raw sampled data to be saved by passing `save_raw = TRUE`. This allows subsequent calls to the sampling function for the same start and end times to load the pre-saved .rds file.
+By default, raw sampled data is not stored.
+As a result, reprocessing the same dataset with altered parameters while maintaining the original `start_time` and `end_time` will trigger a new sampling operation.
+For improved efficiency, you can enable the raw sampled data to be saved by passing `save_raw = TRUE`.
+This allows subsequent calls to the sampling function for the same start and end times to load the pre-saved .rds file.
 
 ```{r Raw sampling a file default, eval = FALSE}
 # Simple run using default parameter values
-raw_measurements <- sample_binfile(binfile, binfile_path, output_folder, downsample = FALSE)
+raw_measurements <- sample_binfile(binfile, 
+                                   binfile_path, 
+                                   output_folder, 
+                                   downsample = FALSE)
 ```
 
 ```{r Raw sampling a file with parameters, eval = FALSE}
 # Exposed parameters can be changed
-raw_measurements <- sample_binfile(binfile, binfile_path, output_folder,
+raw_measurements <- sample_binfile(
+  binfile, 
+  binfile_path, 
+  output_folder,
   start_time = NULL,
   end_time = NULL,
   downsample = FALSE,
@@ -265,30 +361,44 @@ raw_measurements <- sample_binfile(binfile, binfile_path, output_folder,
 
 ### ii. Creating calibration values from your data
 
-Calibration is performed on sampled raw data before calculating measures or conducting any further analysis to correct for errors and improve the accuracy of measurements. There are two types of calibration available: factory calibration and auto calibration, with an additional option for temperature compensation.
+Calibration is performed on sampled raw data before calculating measures or conducting any further analysis to correct for errors and improve the accuracy of measurements.
+There are two types of calibration available: factory calibration and auto calibration, with an additional option for temperature compensation.
 
 **Factory calibration**
 
-GENEActiv accelerometers are calibrated during the manufacturing process. The calibration values obtained during this process is stored in the bin file. During MPI creation, these values are read and saved in the MPI as factory calibration values. 
+GENEActiv accelerometers are calibrated during the manufacturing process.
+The calibration values obtained during this process is stored in the bin file.
+During MPI creation, these values are read and saved in the MPI as factory calibration values.
 
 **Auto calibration**
 
-During real-world use, factors such as temperature variations, mechanical stress, and sensor drift can introduce errors over time. Auto calibration uses data collected during the accelerometer's operation to provide a more accurate calibration than the initial manufacturer calibration, reducing these errors. Doing so lowers the noise floor and enhances measurement sensitivity. The process involves identifying non-movement periods in the data and fitting these points onto a unitary sphere. Calibration values are then calculated based on deviations from the sphere. If available, temperature data can be incorporated here to further refine the calibration values.
+During real-world use, factors such as temperature variations, mechanical stress, and sensor drift can introduce errors over time.
+Auto calibration uses data collected during the accelerometer's operation to provide a more accurate calibration than the initial manufacturer calibration, reducing these errors.
+Doing so lowers the noise floor and enhances measurement sensitivity.
+The process involves identifying non-movement periods in the data and fitting these points onto a unitary sphere.
+Calibration values are then calculated based on deviations from the sphere.
+If available, temperature data can be incorporated here to further refine the calibration values.
 
 ```{r Auto calibration default, eval = FALSE}
 ## Two steps in obtaining auto calibration parameters:
 
 # 1. Identify non-movement periods
 MPI <- detect_nonmovement(binfile, binfile_path, output_folder)
+
 # 2. Calculate auto-calibration parameters, temperature compensation TRUE by default
 MPI <- calc_autocalparams(binfile, binfile_path, output_folder, MPI$non_movement$sphere_points)
 ```
 
-The parameters for non-movement detection and auto calibration calculation can be adjusted as needed. The parameters and their default values are listed below. For detailed descriptions of each parameter, please refer to the documentation of the respective function.
+The parameters for non-movement detection and auto calibration calculation can be adjusted as needed.
+The parameters and their default values are listed below.
+For detailed descriptions of each parameter, please refer to the documentation of the respective function.
 
 ```{r Calibrating your data parameters, eval = FALSE}
 # Detect non-movement
-MPI <- detect_nonmovement(binfile, binfile_path, output_folder,
+MPI <- detect_nonmovement(
+  binfile, 
+  binfile_path, 
+  output_folder,
   still_seconds = 120,
   sd_threshold = 0.013,
   temp_seconds = 240,
@@ -300,7 +410,10 @@ MPI <- detect_nonmovement(binfile, binfile_path, output_folder,
 )
 
 # Calculate auto-calibration parameters
-MPI <- calc_autocalparams(binfile, binfile_path, output_folder,
+MPI <- calc_autocalparams(
+  binfile, 
+  binfile_path, 
+  output_folder,
   MPI$non_movement$sphere_points,
   use_temp = TRUE,
   spherecrit = 0.3,
@@ -309,10 +422,10 @@ MPI <- calc_autocalparams(binfile, binfile_path, output_folder,
 )
 ```
 
-
 ### iii. Applying calibration values to your data
 
-To calibrate your data for analysis, use the `apply_calibration()` function to apply either the factory calibration values or the auto calibration values to your raw sampled data. The light calibration process varies between GENEActiv 1.1 and GENEActiv 1.2, so measurement device must be correctly specified.
+To calibrate your data for analysis, use the `apply_calibration()` function to apply either the factory calibration values or the auto calibration values to your raw sampled data.
+The light calibration process varies between GENEActiv 1.1 and GENEActiv 1.2/1.3, so measurement device must be correctly specified.
 
 ```{r Apply calibration, eval = FALSE}
 # Sample data
@@ -325,18 +438,25 @@ calibrated_factory <- apply_calibration(raw_measurements, MPI$factory_calibratio
 calibrated_auto <- apply_calibration(raw_measurements, MPI$auto_calibration, MPI$file_data[["MeasurementDevice"]])
 ```
 
-### iv. Detecting transitions in your data for event aggregation
+### iv. Detecting transitions in your data for event aggregation {#iv.-detecting-transitions-in-your-data-for-event-aggregation}
 
-The `detect_transitions` function detects mean and variance changepoints in downsampled 1Hz acceleration data from a bin file, using the changepoint package dependency. The default run is shown below.
+The `detect_transitions` function identifies changepoints in the mean and variance of downsampled 1Hz acceleration data from a bin file, using the changepoint package dependency.
+By default, transition detection only requires the 1Hz downsampled measurements corresponding to the time period over which transitions are to be calculated.
+Each detected transition marks the start of an event.
+Transitions are returned in a two-column format consisting of time_UTC and index.
+For a given day, the start and end timestamps and their corresponding indices collectively define that day's transitions.
+
+It is recommended that transition detection is run and interpreted on a day-by-day basis with the day measurements starting and ending at the chosen `cut_time_24hr`.
 
 ```{r Detect transitions for event aggregation default, eval = FALSE}
-MPI <- detect_transitions(binfile, binfile_path, output_folder)
+transitions <- detect_transitions(measurements)
 ```
 
 Alternatively, you can modify the minimum event duration, x, y or z changepoint penalties, or the 24-hour cut time.
 
 ```{r Detect transitions for event aggregation parameters, eval = FALSE}
-MPI <- detect_transitions(binfile, binfile_path, output_folder,
+MPI <- detect_transitions(
+  measurements,
   minimum_event_duration = 5,
   x_cpt_penalty = 18,
   y_cpt_penalty = 25,
@@ -345,17 +465,31 @@ MPI <- detect_transitions(binfile, binfile_path, output_folder,
 )
 ```
 
-### iv. Applying calculations to raw data to obtain additional measures
+Transitions are not saved during processing as it is used immediately in downstream processing of events.
+If required, transitions can be calculated from bouts outputs.
 
-After calibrating the data, you can apply a series of calculation functions to compute measures for your final aggregated output. The functions include:
+```{r Calculate transitions from bouts output, eval = FALSE}
+bouts <- readRDS("path/to/dayX_bouts.rds")
+transitions <- data.frame(time_UTC = c(bouts$TimeUTC, 
+                                       bouts$TimeUTC[nrow(bouts)] + bouts$Duration[nrow(bouts)]),
+                          index = c(1, cumsum(bouts$Duration) + 1))
+```
 
-- `apply_updown`: Elevation
-- `apply_degrees`: Rotation
-- `apply_radians`: Rotation
-- `apply_AGSA`: Absolute Gravity-Subtracted Acceleration
-- `apply_ENMO`: Euclidean Norm Minus One
+### v. Applying calculations to raw data to obtain additional measures
 
-Simply apply the desired function to your dataset. To apply multiple functions to the same dataset, you can use nested function calls. The sequence in which the functions are nested determines their order in the outputs. The calculation is applied from the innermost to the outermost nest.
+After calibrating the data, you can apply a series of calculation functions to compute measures for your final aggregated output.
+The functions include:
+
+-   `apply_updown`: Elevation
+-   `apply_degrees`: Rotation
+-   `apply_radians`: Rotation
+-   `apply_AGSA`: Absolute Gravity-Subtracted Acceleration
+-   `apply_ENMO`: Euclidean Norm Minus One
+
+Simply apply the desired function to your dataset.
+To apply multiple functions to the same dataset, you can use nested function calls.
+The sequence in which the functions are nested determines their order in the outputs.
+The calculation is applied from the innermost to the outermost nest.
 
 ```{r Applying calculations on calibrated data, eval = FALSE}
 # To apply one measure calculations
@@ -371,20 +505,38 @@ calibrated_measures <- apply_degrees(
 )
 ```
 
-### v. Aggregating your raw data into epochs/events
+### vi. Get events indices from transitions
 
-To aggregate epochs or events, a series of steps must first be completed. Each step is detailed in its own section in this vignette.
+For event-based aggregation and step counting, the `events` parameter is required as an input to their respective functions. The `events` parameter specifies the start and end measurement indices in the raw data corresponding to each event. Each row of `events` defines a single event using inclusive start and end indices. For example, if a 24-hour day contains 4,320,000 rows of data (sampling frequency of 50Hz), the first two consecutive 20-second events would be defined as follows:
 
-1. Detect Transitions (required for event aggregation only)
-2. Calculate Auto-calibration Parameters
-3. Sample Raw Data
-4. Apply Calibration Values
-5. Apply Additional Measures
+Event 1: start = 1, end = 1000
+Event 2: start = 1001, end = 2000
 
-**Event Aggregation:** Pass the transitions as a parameter to the `aggregate_events()` function. Note that event aggregation must be performed day by day due to the structure of transitions. Ensure you use the same `cut_time_24hr` when detecting transitions and when splitting the days during sampling. An example of day by day event aggregation is provided in the Appendix.
+```{r Get events, eval = FALSE}
+events <- get_events(calibrated, transitions, sample_frequency)
+```
+
+### vii. Aggregating your raw data into epochs/events
+
+Before aggregating epochs or events, a series of steps must first be completed.
+Each step is detailed in its own section in this vignette.
+
+For each day determined by `cut_time_24hr`:
+
+1.  Sample the raw data
+2.  Calibrate the raw data
+3.  Apply additional measures, with AGSA as a minimum requirement
+4.  Detect transitions from downsampled data (required for event aggregation only)
+5.  Get events from transitions (required for event aggregation only)
+
+**Event Aggregation:** Pass the events as a parameter to the `aggregate_events()` function.
+Note that event aggregation must be performed day by day due to the structure of transitions.
+Ensure you use the same `cut_time_24hr` when detecting transitions and when splitting the days during sampling.
+An example of day by day event aggregation is provided in the Appendix.
 
 ```{r Aggregating events, eval = FALSE}
-events_agg <- aggregate_events(calibrated,
+events_agg <- aggregate_events(
+  calibrated,
   measure = c("x", "y", "z", "AGSA"),
   time = "TimeUTC",
   sample_frequency = sample_frequency,
@@ -393,7 +545,10 @@ events_agg <- aggregate_events(calibrated,
 )
 ```
 
-**Epoch Aggregation:** Pass the desired epoch duration as a parameter to the `aggregate_epochs()` function. While epoch aggregation can be performed on the entire dataset, it may be computationally intensive for large datasets. We recommend splitting your data into manageable day chunks. End-of-day partial epochs will be removed from the final aggregation output.
+**Epoch Aggregation:** Pass the desired epoch duration as a parameter to the `aggregate_epochs()` function.
+While epoch aggregation can be performed on the entire dataset, it may be computationally intensive for large datasets.
+We recommend splitting your data into manageable day chunks.
+End-of-day partial epochs will be removed from the final aggregation output.
 
 ```{r Aggregating epochs, eval = FALSE}
 epochs_agg <- aggregate_epochs(calibrated,
@@ -405,24 +560,207 @@ epochs_agg <- aggregate_epochs(calibrated,
 )
 ```
 
+## GENEAbout 
+
+Following preprocessing with `geneacore()`, your bin file output folder will contain daily epoch or event outputs.  These can be analysed directly within R, or if CSV export was enabled during preprocessing, analysis can also be completed outside of the R environment.
+
+If you require behaviour classification generated by ActivInsights' classification models, `geneabout()` provides the next stage of processing.
+
+### i. geneabout() wrapper function
+
+To streamline workflow, `geneabout()` manages the interactions between underlying functions.
+
+Sequentially, `geneabout` performs the following:
+
+-   Assigns behavioural bouts to events and aggregates the daily bout outputs
+-   Calculates and reports aggregated daily activity and sleep measures
+-   Generates COEL atom JSON files
+
+The individual processing steps covered by `geneabout()` are detailed in the [GENEAcore functions flowchart](#Appendix.-geneacore-functions-flowchart). 
+
+At a minimum, `geneabout()` can be run with just a single parameter: `data_folder`, which specifies the directory containing the .bin files to be analysed. **Important!** The specified `data_folder` must already have been processed using `geneacore()`, or contain the expected output subfolder and preprocessing outputs for each .bin file.
+
+```{r Running geneabout, eval = FALSE}
+library(GENEAcore)
+geneabout(data_folder = "/path/to/datafolder")
+```
+
+**Optional arguments**
+
+The main optional parameters and their defaults are:
+
+-   `timer` prints the elapsed processing times for development purposes. Defaults to **FALSE**.
+-   `minimum_valid_hours` specifies the minimum number of hours of wear time in a 24-hour day to be considered a valid day for reported measures. Defaults to **22** hours.
+-   `save_daily_bouts` allows daily bouts to be saved as RDS and CSV files, one for each day of events. The bouts file contains additional bout classification columns. Defaults to **FALSE** and only a single aggregated bout file is produced in CSV and RDS format.
+-   `coel_json` generates COEL behavioural atom JSON files from bout classifications. Further details are available in [COEL Behavioural Atoms 2.0](#coel-behavioural-atoms). Defaults to **FALSE**.
+-   `identifier_mapping_record` must be a file path to the exported `identifier_mapping_record.csv`.  Encrypted participant IDs in the activity and sleep measures will be replaced with their corresponding mapped identifiers. The default **NULL** retains the IDs from the bin file.
+
+The same `controls_list` configured for `geneacore()` can be reused when calling `geneabout()`, as the function automatically selects only the parameters relevant to it. In the example below, the previously defined `controls_list` does not modify any `geneabout()` settings because `geneabout()` already outputs bouts in CSV by default and the remaining parameters in the list do not apply.
+
+```{r Running geneabout with existing parameters, eval = FALSE}
+library(GENEAcore)
+
+controls_list <- list(
+  output_epochs = TRUE,
+  epoch_duration = 600,
+  output_events = FALSE,
+  output_csv = TRUE,
+  required_processing_hours = 4)
+
+geneabout(
+  data_folder = "C:/path/to/datafolder",
+  control = controls_list
+)
+```
+
+To change the output behaviour of `geneabout()`, a new `controls_list` needs to be defined or the existing one can be extended. In this example, bouts are produced for each available day in both CSV and RDS formats. Where a match is found, participant, site, study and visit IDs in the daily measures CSV will be replaced with their mapped identifiers.
+
+```{r Running geneabout with new parameters, eval = FALSE}
+library(GENEAcore)
+
+controls_list <- list(
+  output_epochs = TRUE,
+  epoch_duration = 600,
+  output_events = FALSE,
+  output_csv = TRUE,
+  required_processing_hours = 4,
+  save_daily_bouts = TRUE,
+  identifier_mapping_record = "C:/path/to/identifier-mapping-record.csv"
+  )
+
+geneabout(
+  data_folder = "C:/path/to/datafolder",
+  control = controls_list
+)
+```
+
+### ii. Expected outputs
+
+**Bouts**
+
+Events are classified into behavioural bouts. Aggregated and daily bout outputs are saved in CSV and RDS format within the output folder of their associated bin file.
+
+**Daily activity measures**
+
+Aggregated daily activity measures are calculated from bout outputs and reported in CSV format.
+Measures include durations across activity intensity levels, step counts and cadence metrics, and active volume. If `include_participant_info` was set to `TRUE`, participant header information is included in the activity measures. By default, `geneabout()` generates a single set of daily measures that combines both activity and sleep measures. These outputs are saved in a subfolder named `GENEAbout` that sits within the main data folder.
+A comprehensive list of daily activity measures and their descriptions is provided in the Data Dictionary.
+
+**Daily sleep measures**
+
+Aggregated daily sleep measures are calculated from bout outputs and reported in CSV format.
+Measures include rest interval metrics, sleep interval metrics, wake after sleep onset metrics and nap metrics. If `include_participant_info` was set to `TRUE`, participant header information is included in the sleep measures. By default, `geneabout()` generates a single set of daily measures that combines both activity and sleep measures. These outputs are saved in a subfolder named `GENEAbout` that sits within the main data folder.
+A comprehensive list of daily sleep measures and their descriptions is provided in the Data Dictionary.
+
+**COEL behavioural atoms**
+
+Two types of COEL behavioural atoms are created as JSON files within the output folder of each bin file: one representing rest activity and one representing behavioural bouts. Aggregated atoms for each data folder is also created and saved as JSON files in `Batch JSON outputs` of the `GENEAbout` folder.
+
+## Individual access to GENEAbout functions
+
+For greater control over your generated outputs, you can execute each function individually with your preferred parameter values.
+
+### i. Rest intervals
+
+The rest interval is determined by expanding each still bout by a proportion of its duration. If these expanded periods overlap, the corresponding still bouts are merged to form longer continuous periods. The longest still period within the day is recorded as the primary rest interval in the MPI. 
+
+The parameters that can be adjusted are `start_expansion_percent` and `end_expansion_percent`. These parameters control how much of each still bout is expanded at the start and end respectively. The `cut_time_24hr` parameter should match the value used elsewhere in your analysis pipeline to ensure consistent day boundaries.
+
+As identifying rest intervals relies on knowledge of both still bouts and non-wear, the MPI non-movement detection step must be completed before running the finding rest intervals step.
+
+```{r Find rest intervals, eval = FALSE}
+MPI <- find_rest_intervals(start_expansion_percent = 26,
+                           end_expansion_percent = 13,
+                           cut_time_24hr = "15:00",
+                           MPI)
+```
+
+### ii. Nonwear and rest coverage
+
+Non-wear and rest coverage must be calculated for each event before events can be classified into behavioural bouts. This function determines the number of seconds each event or epoch fall within periods of non-wear or rest. 
+
+To do this, daily non-wear periods must be calculated using the function `valid_day_nonwear`, which is required as an input to the `nonwear_day` parameter. You will also need to provide the aggregated data for the day currently being processed.
+
+This function returns the aggregated data frame with two additional columns: `nonwear.time` and `rest.time`. The resulting data frame can then be saved or passed directly into the next stage of behavioural classification.
+
+```{r Non wear rest coverage, eval = FALSE}
+# Date range must define the day boundaries using the chosen 24-hour cut time.
+date_range <- data.frame(
+  start = c(1761829400, 1761832800, 1761919200),
+  end = c(1761832800, 1761919200, 1761938195),
+  length = c(83000, 86400, 18995),
+  day = c(1, 2, 3)
+)
+
+nonwear_by_day <- valid_day_nonwear(
+  MPI_nonwear = MPI[["non_movement"]][["non_wear"]],
+  date_range = date_range,
+  required_processing_hours = 0,
+  cut_time_24hr = "15:00"
+)
+
+events_df <- nonwear_rest_coverage(
+  MPI = MPI,
+  aggregated_data = events_df,
+  start_time = NULL, # If NULL, the first timestamp in the aggregated data is used
+  end_time = NULL, # If NULL, the timestamp at the end of the final event or epoch is used
+  nonwear_day = nonwear_by_day[["nonwear_day"]]
+)
+```
+
+### iii. Decision tree
+
+The decision tree determines the classification of behavioural bouts from events.
+
+Three parameters can be adjusted to control this classification:
+
+-   `SDduration_threshold` defines the sleep classification threshold and represents the duration-weighted average standard deviation of the 3 axes for each event.
+-   `AGSA_threshold` defines the boundary between sedentary and active behaviour based on the mean Absolute Gravity-Subtracted Acceleration (AGSAMean).
+-   `running_threshold` specifies the AGSAMean that an ambulatory bout is classified as running.
+
+The resulting bouts data frame can then be saved as an RDS file.
+
+```{r Bouts decision tree, eval = FALSE}
+bouts <- bouts_decision_tree(events_df,
+                             SDduration_threshold = 5.7e-5,
+                             AGSA_threshold = 0.0625,
+                             running_threshold = 0.407)
+```
+
+## COEL Behavioural Atoms 2.0 {#coel-behavioural-atoms}
+
+GENEAcore bouts can be exported as [COEL (Classification of Everyday Living](https://docs.oasis-open.org/coel/COEL/v1.0/cs01/COEL-v1.0-cs01.html) Behavioural Atoms v2.0 in JSON format. Each atom is a small block of self-describing, micro-structured data that codes a specific human event relating to an individual (participant) or environment in time. It is structured as a JSON object that can represent event duration, observation method, location, contextual details, and intended use. By expressing GENEAcore outputs as COEL atoms, the function provides a standardised, portable, machine-actionable representation of everyday behaviour that support validation, auditing and reuse across multiple analysis streams.
+
+To export COEL atoms, only the data folder needs to be provided as a parameter. Within the data folder, each bin file must have an MPI RDS and a bouts RDS. The function produces two types of COEL JSON atoms in the output folder of each bin file: one representing rest activity and one representing behavioural bouts. 
+
+The function also creates a `payload` subfolder within the data folder. This folder contains aggregated outputs in which the atoms from all files in the data folder are combined into a single rest activity JSON file and a single behavioural bout JSON file.
+
+```{Export COEL behavioural atoms}
+create_coel_atoms_json(data_folder)
+```
+
 ## Appendix
 
-### i. GENEAcore functions flowchart
+### i. GENEAcore functions flowchart {#Appendix.-geneacore-functions-flowchart}
 
-```{r GENEAcore flowchart, echo=FALSE}
+```{r geneacore flowchart, echo=FALSE, out.extra='style="border:1px solid #ccc; padding:4px;"'}
 knitr::include_graphics("../inst/extdata/geneacore_functions.png")
+```
+
+```{r geneabout flowchart, echo=FALSE, out.width="70%", out.extra='style="border:1px solid #ccc; padding:4px;"'}
+knitr::include_graphics("../inst/extdata/geneabout_functions.png")
 ```
 
 ### ii. Sample code to loop functions for a folder of files
 
 This example iterates through a folder and does the following for each bin file in the folder:
 
-- Creates a project folder
-- Reads in bin file
-- Creates an MPI object
-- Downsamples data
-- Detects nonmovement
-- Calculates auto calibration parameters
+-   Creates a project folder
+-   Reads in bin file
+-   Creates an MPI object
+-   Downsamples data
+-   Detects nonmovement
+-   Calculates auto calibration parameters
 
 ```{r Loop functions for folder, eval=FALSE}
 data_folder <- "C:/path/to/folder"
@@ -453,75 +791,79 @@ for (seq in 1:length(data_files)) {
 
 ### iii. Sample code to aggregate events by day
 
-The following excerpt from the` geneacore()` function demonstrates how to determine the date range of your file, then sample, calibrate, and aggregate the data by day. Finally, it combines everything into a single aggregated output. The example provided is for events, but the same logic applies to epochs using the appropriate functions. If running for events, ensure that transitions are executed as part of MPI beforehand. See [Detecting transitions in your data for event aggregation](#iv.-detecting-transitions-in-your-data-for-event-aggregation) for more information on how to run `detect_transitions()`.
+The following excerpt from the `geneacore()` function demonstrates how to determine the date range of your file, then sample, calibrate, and aggregate the data by day.
+The example provided is for events, but the same logic applies to epochs using the appropriate functions.
 
 ```{r Aggregating events day by day, eval = FALSE}
 # Prepare time borders of each day
-cut_time <- strptime(cut_time_24hr, format = "%H:%M")$hour
-cut_time_shift <- (cut_time * 60 * 60) - MPI$file_data[["TimeOffset"]]
-first_day <- as.Date(as.POSIXct(MPI$file_info$first_time_UTC - cut_time_shift, origin = "1970-01-01"))
-last_day <- as.Date(as.POSIXct(MPI$file_info$last_time_UTC - cut_time_shift, origin = "1970-01-01"))
-
-# Generate start and end time for each day we need to process
-days_to_process <- seq(first_day, last_day, by = 1)
-date_range <- lapply(days_to_process, FUN = function(x) {
-  c(
-    "start" = max(MPI$file_info$first_time_UTC, as.numeric(as.POSIXlt(x)) + cut_time_shift),
-    "end" = min(MPI$file_info$last_time_UTC, as.numeric(as.POSIXlt(x + 1)) + cut_time_shift)
-  )
-})
-date_range <- data.frame(t(sapply(date_range, c)))
+cut_times <- get_cut_times(MPI$file_data[["CutTime24Hr"]], MPI)
+date_range <- data.frame(start = cut_times[1:(length(cut_times) - 1)], end = cut_times[2:(length(cut_times))])
 date_range$day <- rownames(date_range)
 date_range$length <- date_range$end - date_range$start
-# A valid day is at least 5 seconds long
 date_range <- date_range[date_range$length > 5, ]
 
+# Read in downsampled measurement for transition detection
+downsampled_measurements <- readRDS(file.path(output_folder, paste0(UniqueBinFileIdentifier, "_downsample.rds")))
+
 sample_frequency <- MPI$file_data[["MeasurementFrequency"]]
-events_list <- list()
-# Sample, calibrate and aggregate the data day-by-day
-for (day_number in date_range$day[1]:date_range$day[nrow(date_range)]) {
-  results <- sample_binfile(binfile, binfile_path, output_folder,
-    start_time = date_range[day_number, 1],
-    end_time = date_range[day_number, 2],
-    downsample = FALSE
-  )
 
-  calibrated <- apply_calibration(results, MPI$auto_calibration, MPI$file_data[["MeasurementDevice"]])
+for (day_number in nrow(date_range)) {
+  steps_epochs_df <- data.frame()
+  steps_events_df <- data.frame()
 
-  calibrated <- apply_AGSA(calibrated)
+  message(paste("Processing Day", day_number, "of", nrow(date_range)))
+  results <- readRDS(file.path(
+    output_folder,
+    paste0(UniqueBinFileIdentifier, "_", date_range$start[day_number], "_", date_range$end[day_number], "_rawdata.rds")
+  ))
 
-  day_transitions <- MPI$transitions[MPI$transitions$day == day_number, "index"]
-  events <- data.frame(
-    "start" = day_transitions[-length(day_transitions)],
-    "end" = floor(sample_frequency * (day_transitions[-1] - 1))
-  )
-  if (length(day_transitions) == 1) {
-    events <- data.frame("start" = day_transitions, "end" = nrow(calibrated))
-  }
-  if (nrow(events) > 1) {
-    events$start[2:nrow(events)] <- events$end[-nrow(events)] + 1
-  }
-  if ((nrow(calibrated) - events$end[length(events$end)]) > sample_frequency) {
-    events <- rbind(events, c(events$end[length(events$end)] + 1, nrow(calibrated)))
+  # Apply auto calibration and other calculated measures
+  if ("auto_calibration" %in% names(MPI)) {
+    calibrated <- apply_calibration(results, MPI$auto_calibration, MPI$file_data[["MeasurementDevice"]])
   } else {
-    events$end[length(events$end)] <- nrow(calibrated)
+    calibrated <- apply_calibration(results, MPI$factory_calibration, MPI$file_data[["MeasurementDevice"]])
   }
-  events_agg <- aggregate_events(calibrated,
-    measure = c("x", "y", "z", "AGSA"),
+
+  calibrated <- apply_all(calibrated) # apply_all calculates AGSA, ENMO, UpDown and Degrees
+
+  day_measurements <- subset(
+    downsampled_measurements,
+    TimeUTC >= date_range$start[day_number] & TimeUTC < date_range$end[day_number]
+  )
+  day_transitions <- detect_transitions(day_measurements, cut_time_24hr = MPI$file_data[["CutTime24Hr"]])
+  events <- get_events(calibrated, day_transitions, sample_frequency)
+  
+  events_df <- aggregate_events(calibrated,
+    measure = c("x", "y", "z", "Light", "Temp", "AGSA", "ENMO", "UpDown", "Degrees"),
     time = "TimeUTC",
     sample_frequency = sample_frequency,
     events = events,
-    fun = function(x) c(Mean = mean(x), SD = sd(x))
+    fun = function(x) c(Mean = mean(x), Max = max(x), SD = sd(x))
   )
-  events_list[[day_number]] <- events_agg
-}
+  events_df$DayNumber <- rep(day_number, nrow(events_df))
 
-# Combine daily aggregated events into a single output
-events_df <- do.call(rbind, events_list)
+  # Step Counter
+  for (eventnumber in seq_len(nrow(events))) {
+    steps <- step_counter(calibrated[(events$start[eventnumber]:events$end[eventnumber]), "y"],
+      sample_frequency = sample_frequency
+    )
+    steps_events_df <- rbind(steps_events_df, steps)
+  }
+  colnames(steps_events_df) <- c("StepCount", "StepMean", "StepSD", "StepDiff")
+  events_df <- cbind(events_df, steps_events_df)
+
+  if (!is.null(events_df)) {
+    events_df <- reorder_df(events_df)
+    events_df <- nonwear_rest_coverage(MPI, events_df, date_range$start[day_number], date_range$end[day_number], nonwear_by_day$nonwear_day)
+    output_location <- file.path(output_folder, paste0(MPI$file_data[["UniqueBinFileIdentifier"]], "_day", day_number, "_events"))
+    saveRDS(events_df, paste0(output_location, ".rds"))
+    write.csv(round_columns(events_df), file = paste0(output_location, ".csv"), row.names = FALSE)
+  }
+}
 ```
 
-# Citation
+## Citation
 
-If you use **GENEAcore** in published work, please cite:
+If using **GENEAcore** in published work, please cite:
 
-Langford J., Chua J.Y., Long I., Williams A.C. and Hillsdon M. (2025) ‘Validation and optimisation of wearable accelerometer data pre-processing for digital measure implementation and development’, [Manuscript in preparation].
+Langford, J., Chua, J.Y., Long, I., Williams, A.C. and Hillsdon, M. (2026). Validation and optimisation of wearable accelerometer data pre-processing for digital measure implementation and development. PLOS One. Submitted for publication. Available at: https://doi.org/10.64898/2026.03.21.713324

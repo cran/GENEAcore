@@ -5,7 +5,7 @@
 #' @return Single string identifier.
 #' @export
 #' @examples
-#' binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+#' binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 #' con <- file(binfile_path, "r")
 #' binfile <- readLines(con, skipNul = TRUE)
 #' close(con)
@@ -36,6 +36,7 @@ get_UniqueBinFileIdentifier <- function(binfile) {
 #' @param binfile_directory Path to the file to be processed
 #' @return Named vector, the vector name is the filename and the value the identifier.
 #' @export
+#' @keywords internal
 #' @examples
 #' binfile_directory <- system.file("extdata", package = "GENEAcore")
 #' UniqueBinFileIdentifiers <- get_UniqueBinFileIdentifier.dir(binfile_directory)
@@ -57,8 +58,9 @@ get_UniqueBinFileIdentifier.dir <- function(binfile_directory) {
 #' @param binfile_path Path to the file to be processed
 #' @return Single string identifier.
 #' @export
+#' @keywords internal
 #' @examples
-#' binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+#' binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 #' UniqueBinFileIdentifier <- get_UniqueBinFileIdentifier.filepath(binfile_path)
 get_UniqueBinFileIdentifier.filepath <- function(binfile_path) {
   # Read in all the lines as the file length is used in the id
@@ -75,8 +77,9 @@ get_UniqueBinFileIdentifier.filepath <- function(binfile_path) {
 #' @param binfile Text lines read from an open connection to a bin file.
 #' @return Single string identifier.
 #' @export
+#' @keywords internal
 #' @examples
-#' binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+#' binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 #' con <- file(binfile_path, "r")
 #' binfile <- readLines(con, skipNul = TRUE)
 #' close(con)
@@ -89,7 +92,7 @@ get_UniqueBinFileIdentifier.vector <- function(binfile) {
     MeasurementDeviceID <- (sub("Device Unique Serial Code:", "", binfile[2]))
     ConfigTimeUTC <- (sub("Config Time:", "", binfile[31]))
     if (ConfigTimeUTC == "2010-09-16 09:08:54:000") {
-      if (FileLength > 70) {
+      if (FileLength > 69) {
         start_time <- sub("Page Time:", "", binfile[min(which(binfile == "Recorded Data")) + 3])
         start_time <- as.POSIXct(start_time, format = "%Y-%m-%d %H:%M:%OS", origin = "1970-01-01", tz = "GMT")
         start_time <- as.numeric(start_time)
@@ -130,7 +133,7 @@ get_UniqueBinFileIdentifier.vector <- function(binfile) {
 #' @return List of measurement period information.
 #' @export
 #' @examples
-#' binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+#' binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 #' con <- file(binfile_path, "r")
 #' binfile <- readLines(con, skipNul = TRUE)
 #' close(con)
@@ -144,13 +147,17 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
   # get UniqueBinFileIdentifier
   UniqueBinFileIdentifier <- get_UniqueBinFileIdentifier(binfile)
 
-  if (!is.na(UniqueBinFileIdentifier)) {
+  if (length(UniqueBinFileIdentifier) > 0 && !is.na(UniqueBinFileIdentifier) && UniqueBinFileIdentifier != "") {
+    if (!file.exists(output_folder)) {
+      dir.create(output_folder)
+    }
+
     # check if MPI file already exists and create if not
     MPI_filepath <- file.path(output_folder, paste0(UniqueBinFileIdentifier, "_MPI.rds"))
     if (file.exists(MPI_filepath)) {
       MPI <- readRDS(MPI_filepath)
-      # check MPI version and return MPI if is 1.2.x
-      if (length(MPI$GENEAcore_version) > 0 && MPI$GENEAcore_version > "1.1.999") {
+      # check MPI version and return MPI if is 1.1.2
+      if (length(MPI$GENEAcore_version) > 0 && MPI$GENEAcore_version >= "1.1.2") {
         return(MPI)
       }
     }
@@ -232,12 +239,19 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
     )
 
     # set up line numbers for bin file elements
-    if (length(binfile) >= 69) {
+    if (length(binfile) > 69) {
       line_numbers["last_line"] <- length(binfile)
     } else {
       errors <- rbind(errors, "Bin file too short or no data pages.")
+      file_data$BinfileName <- basename(binfile_path)
       warning(paste(basename(binfile_path), ": Bin file too short or no data pages."))
-      MPI <- list(errors = errors)
+      MPI <- list(
+        errors = errors,
+        file_data = file_data
+      )
+      if (out_rds) {
+        saveRDS(MPI, file.path(output_folder, paste0(UniqueBinFileIdentifier, "_MPI.rds")))
+      }
       return(MPI)
     }
     i <- 0
@@ -258,16 +272,30 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
       file_info$page_count <- as.numeric(sub("Number of Pages:", "", binfile[line_numbers["memory_status"] + 1]))
     } else {
       errors <- rbind(errors, "Bin file header incomplete.")
+      file_data$BinfileName <- basename(binfile_path)
       warning(paste(basename(binfile_path), ": Bin file header incomplete."))
-      MPI <- list(errors = errors)
+      MPI <- list(
+        errors = errors,
+        file_data = file_data
+      )
+      if (out_rds) {
+        saveRDS(MPI, file.path(output_folder, paste0(UniqueBinFileIdentifier, "_MPI.rds")))
+      }
       return(MPI)
     }
 
     # check not zero pages
     if (file_info$page_count == 0) {
       errors <- rbind(errors, "No data in bin file.")
+      file_data$BinfileName <- basename(binfile_path)
       warning(paste(basename(binfile_path), ": No data in bin file."))
-      MPI <- list(errors = errors)
+      MPI <- list(
+        errors = errors,
+        file_data = file_data
+      )
+      if (out_rds) {
+        saveRDS(MPI, file.path(output_folder, paste0(UniqueBinFileIdentifier, "_MPI.rds")))
+      }
       return(MPI)
     }
 
@@ -278,9 +306,18 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
       line_numbers["last_page"] <- (file_info$page_count - 1) * PAGELENGTH + line_numbers["first_page"]
     } else {
       errors <- rbind(errors, "Bin file is incomplete.")
+      file_data$BinfileName <- basename(binfile_path)
       warning(paste(basename(binfile_path), ": Bin file is incomplete."))
       file_info$page_count <- floor((line_numbers["last_line"] - line_numbers["first_page"] + 1) / PAGELENGTH)
       line_numbers["last_page"] <- (file_info$page_count - 1) * PAGELENGTH + line_numbers["first_page"]
+      MPI <- list(
+        errors = errors,
+        file_data = file_data
+      )
+      if (out_rds) {
+        saveRDS(MPI, file.path(output_folder, paste0(UniqueBinFileIdentifier, "_MPI.rds")))
+      }
+      return(MPI)
     }
 
     # check the decimal separator
@@ -336,8 +373,8 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
       file_info$first_time_UTC <- first_timestamp - file_data$TimeOffset
     }
     file_data$MeasurementStartTimeUTC <- file_info$first_time_UTC
-    file_data$MeasurementStartTimeISO <- paste0(gsub(" ", "T", as.character(as.POSIXct((file_info$first_time_UTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"))), file_data$TimeZone)
-    file_data$MeasurementStartDate <- format(as.Date(as.POSIXct(file_info$first_time_UTC, origin = "1970-01-01", tz = "GMT")), format = "%d-%b-%y")
+    file_data$MeasurementStartTimeISO <- paste0(gsub(" ", "T", as.character(format(as.POSIXct((file_info$first_time_UTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"), "%Y-%m-%d %H:%M:%S"))), file_data$TimeZone)
+    file_data$MeasurementStartDate <- format(as.Date(as.POSIXct(file_info$first_time_UTC + file_data$TimeOffset, origin = "1970-01-01", tz = "GMT")), format = "%d-%b-%Y")
 
     # get last timestamp, checking if it has 0.5s element
     last_timestamp <- sub("Page Time:", "", binfile[line_numbers["last_page"] + 3])
@@ -347,17 +384,32 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
 
     file_info$last_time_UTC <- floor(last_timestamp - file_data$TimeOffset + NUMOBS / file_data$MeasurementFrequency)
 
-    file_data$MeasurementEndTimeUTC <- file_info$last_time_UTC
-    file_data$MeasurementEndTimeISO <- paste0(gsub(" ", "T", as.character(as.POSIXct((file_info$last_time_UTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"))), file_data$TimeZone)
+    # check not zero pages
+    if (is.infinite(file_info$last_time_UTC)) {
+      errors <- rbind(errors, "Corrupted bin file.")
+      file_data$BinfileName <- basename(binfile_path)
+      warning(paste(basename(binfile_path), ": Corrupted bin file."))
+      MPI <- list(
+        errors = errors,
+        file_data = file_data
+      )
+      if (out_rds) {
+        saveRDS(MPI, file.path(output_folder, paste0(UniqueBinFileIdentifier, "_MPI.rds")))
+      }
+      return(MPI)
+    }
 
     # check file is contiguous
     if (abs((file_info$last_time_UTC - file_info$first_time_UTC) -
       (file_info$page_count * round(NUMOBS / file_data$MeasurementFrequency, 1))) > 1) {
       errors <- rbind(errors, "Bin file is not contiguous.")
-      warning(paste(basename(binfile_path), ": Bin file is not contiguous."))
+      warning(paste(basename(binfile_path), ": Bin file is not contiguous. Last timestamp recalculated."))
       MPI <- list(errors = errors)
-      return(MPI)
+      file_info$last_time_UTC <- floor(expected_last_timestamp(file_data$MeasurementFrequency, file_info$page_count, first_timestamp) - file_data$TimeOffset + NUMOBS / file_data$MeasurementFrequency)
     }
+
+    file_data$MeasurementEndTimeUTC <- file_info$last_time_UTC
+    file_data$MeasurementEndTimeISO <- paste0(gsub(" ", "T", as.character(format(as.POSIXct((file_info$last_time_UTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"), "%Y-%m-%d %H:%M:%S"))), file_data$TimeZone)
 
     # record the number of measurements available (removing 0.5s starts & ends)
     file_info$number_measurements <- floor((file_info$last_time_UTC - file_info$first_time_UTC) * file_data$MeasurementFrequency)
@@ -397,7 +449,7 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
     file_data$MeasurementDeviceID <- sub("Device Unique Serial Code:", "", binfile[2])
     file_data$MeasurementDeviceFirmwareVersion <- trimws(sub("Device Firmware Version:", "", binfile[5]))
     file_data$MeasurementDeviceCalibrationDate <- as.POSIXct(sub("Calibration Date:", "", binfile[6]), format = "%Y-%m-%d", origin = "1970-01-01", tz = "GMT")
-    file_data$MeasurementDeviceCalibrationDate <- format(file_data$MeasurementDeviceCalibrationDate, format = "%d-%b-%y")
+    file_data$MeasurementDeviceCalibrationDate <- format(file_data$MeasurementDeviceCalibrationDate, format = "%d-%b-%Y")
     file_data$MeasurementDurationSet <- 60 * 60 * as.numeric(gsub("[^0-9.-]", "", binfile[21]))
     file_data$SiteID <- trimws(sub("Study Centre:", "", binfile[26]))
     file_data$StudyID <- trimws(sub("Study Code:", "", binfile[27]))
@@ -410,7 +462,7 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
     }
     file_data$ConfigTimeUTC <- as.POSIXct(file_data$ConfigTimeUTC, format = "%Y-%m-%d %H:%M:%OS", origin = "1970-01-01", tz = "GMT")
     file_data$ConfigTimeUTC <- as.numeric(file_data$ConfigTimeUTC) - file_data$TimeOffset
-    file_data$ConfigTimeISO <- paste0(gsub(" ", "T", as.character(as.POSIXct((file_data$ConfigTimeUTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"))), file_data$TimeZone)
+    file_data$ConfigTimeISO <- paste0(gsub(" ", "T", as.character(format(as.POSIXct((file_data$ConfigTimeUTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"), "%Y-%m-%d %H:%M:%S"))), file_data$TimeZone)
     file_data$ConfigNotes <- trimws(sub("Config Notes:", "", binfile[32]))
     extra_lines <- line_numbers[["extract_info"]] - 33
     if (extra_lines > 0) {
@@ -422,7 +474,7 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
     file_data$ExtractTimeUTC <- trimws(sub("Extract Time:", "", binfile[line_numbers[["extract_info"]] + 1]))
     file_data$ExtractTimeUTC <- as.POSIXct(file_data$ExtractTimeUTC, format = "%Y-%m-%d %H:%M:%OS", origin = "1970-01-01", tz = "GMT")
     file_data$ExtractTimeUTC <- as.numeric(file_data$ExtractTimeUTC) - file_data$TimeOffset
-    file_data$ExtractTimeISO <- paste0(gsub(" ", "T", as.character(as.POSIXct((file_data$ExtractTimeUTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"))), file_data$TimeZone)
+    file_data$ExtractTimeISO <- paste0(gsub(" ", "T", as.character(format(as.POSIXct((file_data$ExtractTimeUTC + file_data$TimeOffset), origin = "1970-01-01", tz = "GMT"), "%Y-%m-%d %H:%M:%S"))), file_data$TimeZone)
     file_data$ExtractNotes <- trimws(sub("Extract Notes:", "", binfile[line_numbers[["extract_info"]] + 2]))
     file_data$ClockDrift <- regmatches(file_data$ExtractNotes, gregexpr("(?<=\\().*?(?=\\))", file_data$ExtractNotes, perl = T))[[1]][1]
     file_data$ExtractNotes <- unlist(strsplit(file_data$ExtractNotes, split = paste0("(", file_data$ClockDrift, ")"), fixed = TRUE))[2]
@@ -437,10 +489,10 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
     file_data$WearLocationConfig <- sub("Device Location Code:", "", binfile[line_numbers[["subject_info"]] + 1])
     file_data$ParticipantID <- trimws(sub("Subject Code:", "", binfile[line_numbers[["subject_info"]] + 2]))
     file_data$ParticipantDoB <- sub("Date of Birth:", "", binfile[line_numbers[["subject_info"]] + 3])
-    if (file_data$ParticipantDoB == "1900-1-1") {
+    if (file_data$ParticipantDoB == "1900-01-01" || file_data$ParticipantDoB == "1900-1-1") {
       file_data$ParticipantDoB <- ""
     } else {
-      file_data$ParticipantDoB <- format(as.Date(file_data$ParticipantDoB, format = "%Y-%m-%d"), format = "%d-%b-%y")
+      file_data$ParticipantDoB <- format(as.Date(file_data$ParticipantDoB, format = "%Y-%m-%d"), format = "%Y")
     }
     file_data$ParticipantSex <- sub("Sex:", "", binfile[line_numbers[["subject_info"]] + 4])
     file_data$ParticipantHeight <- sub("Height:", "", binfile[line_numbers[["subject_info"]] + 5])
@@ -519,10 +571,13 @@ create_MPI <- function(binfile, binfile_path, output_folder, out_rds = TRUE) {
 #' @details Wrapper function that calls \code{create_summary} for MPI only.
 #' @param input MPI path - single MPI file or folder of MPI files.
 #' @param recursive TRUE applies the operation to all nested elements.
+#' @param identifier_mapping_record File path of the exported identifier_mapping_record CSV file.
 #' @returns Data frame of MPI summary.
 #' @export
-MPI_summary <- function(input, recursive = TRUE) {
-  create_summary(input, path_type = "MPI", recursive = recursive)
+MPI_summary <- function(input, recursive = TRUE, identifier_mapping_record = NULL) {
+  create_summary(input, path_type = "MPI",
+                 recursive = recursive,
+                 identifier_mapping_record = identifier_mapping_record)
 }
 
 #' Bin File Summary
@@ -530,10 +585,13 @@ MPI_summary <- function(input, recursive = TRUE) {
 #' @details Wrapper function that calls \code{create_summary} for bin files only.
 #' @param input Bin file path - single bin file or folder of bin files.
 #' @param recursive TRUE applies the operation to all nested elements.
+#' @param identifier_mapping_record File path of the exported identifier_mapping_record CSV file.
 #' @returns Data frame of bin file or MPI summary.
 #' @export
-binfile_summary <- function(input, recursive = TRUE) {
-  create_summary(input, path_type = "BIN", recursive = recursive)
+binfile_summary <- function(input, recursive = TRUE, identifier_mapping_record = NULL) {
+  create_summary(input, path_type = "BIN",
+                 recursive = recursive,
+                 identifier_mapping_record = identifier_mapping_record)
 }
 
 #' Create Summary
@@ -542,17 +600,25 @@ binfile_summary <- function(input, recursive = TRUE) {
 #' @param input Input type of either a bin file path, MPI path or an MPI object.
 #' @param path_type The file type within the folder to create summary for.
 #' @param recursive TRUE applies the operation to all nested elements.
+#' @param identifier_mapping_record File path of the exported identifier_mapping_record CSV file.
 #' @returns Data frame of bin file or MPI summary.
+#' @keywords internal
 #' @importFrom utils tail
-create_summary <- function(input, path_type, recursive) {
+create_summary <- function(input, path_type, recursive = TRUE, identifier_mapping_record = NULL) {
   if (is.character(input)) {
     if (file.info(input)$isdir) {
       all_items <- list.files(input, full.names = TRUE, recursive = recursive)
       files <- all_items[!file.info(all_items)$isdir]
       all_summaries <- list()
       for (file in files) {
-        summary <- single_summary(file, path_type = path_type)
-        all_summaries[[basename(file)]] <- summary
+        summary <- tryCatch(
+          single_summary(file, path_type = path_type),
+          error = function(e) {
+            warning(sprintf("Skipping file %s: %s", basename(file), e$message), call. = FALSE)
+            return(NULL)
+          }
+        )
+        if (!is.null(summary)) all_summaries[[basename(file)]] <- summary
       }
       summaries <- do.call(rbind, all_summaries)
       summaries <- summaries[rowSums(is.na(summaries)) != ncol(summaries), ]
@@ -575,12 +641,18 @@ create_summary <- function(input, path_type, recursive) {
       warning("MPI object: No summary produced")
     }
   }
+
+  if (!is.null(identifier_mapping_record)) {
+    summary <- identifier_mapping(x = summary,
+                                  cols_to_map = c("SiteID", "StudyID", "PeriodInfo", "ParticipantID"),
+                                  identifier_mapping_record = identifier_mapping_record)
+  }
   return(summary)
 }
 
 single_summary <- function(input, path_type = c("BIN", "MPI")) {
   # If an input is a bin file path or a first round MPI, do quick summary.
-  # If input is a full MPI with non-movement and transitions, do full summary.
+  # If input is a full MPI with non-movement, do full summary.
   PAGELENGTH <- 10
   UBI_warning_message <- NULL
   if (is.character(input)) {
@@ -588,18 +660,18 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
     if (file.exists(input)) {
       if (("BIN" %in% path_type && grepl("\\.bin$", input))) {
         binfile_path <- input
-        first100 <- readLines(binfile_path, n = 100, skipNul = TRUE)
-        first_page <- which(grepl("Recorded Data", first100))[1]
-        page_count <- as.numeric(sub("Number of Pages:", "", first100[which(grepl("Number of Pages", first100))]))
+        first99 <- readLines(binfile_path, n = 99, skipNul = TRUE)
+        first_page <- which(grepl("Recorded Data", first99))[1]
+        page_count <- as.numeric(sub("Number of Pages:", "", first99[which(grepl("Number of Pages", first99))]))
         binfile <- tryCatch(
           {
-            if (length(first100) >= 69) {
+            if (length(first99) > 69) {
               last_line <- page_count * 10 + first_page - 1
-              if (last_line > 100) {
+              if (last_line > 99) {
                 # Open the file in binary mode
                 con <- file(binfile_path, open = "r")
                 seek(con, where = -10000, origin = "end") # Adjust 1e3 to the number of bytes to read from the end
-                last_chunk <- readLines(con, n = 100)
+                last_chunk <- readLines(con, n = 99)
                 close(con)
                 last20 <- tail(last_chunk, 20)
                 if (grep("Recorded Data", last20)[1] == 1) {
@@ -611,12 +683,12 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
                   last_page_pages <- as.numeric(strsplit(last20[grep("Sequence Number", last20)[1]], ":")[[1]][2])
                   last_page <- last20[last_page_start:(last_page_start + PAGELENGTH - 1)]
                 }
-                c(first100, rep("", (last_page_pages * 10 + first_page - 1 - 100)), last_page)
+                c(first99, rep("", max(0,(last_page_pages * 10 + first_page - 1 - 99))), last_page)
               } else {
-                first100
+                first99
               }
             } else {
-              first100
+              first99
               warning("Bin file too short or no data pages.")
             }
           },
@@ -648,6 +720,8 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
     }
   } else if (is.list(input) && inherits(input, "list") && length(input) >= 6) {
     MPI <- input
+  } else if (is.list(input) && inherits(input, "list") && length(input) == 2 && all(c("errors", "file_data") %in% names(input))) {
+    MPI <- input
   } else {
     UBI_warning_message <- NA
     MPI <- NA
@@ -672,6 +746,7 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
         "MeasurementEndTimeISO",
         "SiteID",
         "StudyID",
+        "PeriodInfo",
         "ParticipantID",
         "TimeZone",
         "VoltsEnd",
@@ -684,7 +759,7 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
     } else {
       summary <- data.frame(
         "UniqueBinFileIdentifier" = NA,
-        "BinfileName" = basename(binfile_path),
+        "BinfileName" = MPI$file_data$BinfileName,
         "ClockDrift" = NA,
         "ConfigTimeISO" = NA,
         "ExtractTimeISO" = NA,
@@ -696,6 +771,7 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
         "MeasurementEndTimeISO" = NA,
         "SiteID" = NA,
         "StudyID" = NA,
+        "PeriodInfo" = NA,
         "ParticipantID" = NA,
         "TimeZone" = NA,
         "VoltsEnd" = NA,
@@ -711,16 +787,13 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
       }
     }
     summary$NumberDays <- NA
-    summary$Transitions <- NA
     summary$NonWear <- NA
+    summary$Wear <- NA
     summary$StillBouts <- NA
 
-    if ("transitions" %in% names(MPI)) {
-      summary$NumberDays <- MPI$file_data$NumberDays
-      summary$Transitions <- nrow(MPI$transitions)
-    }
     if ("non_movement" %in% names(MPI)) {
       summary$NonWear <- sum(MPI$non_movement$non_wear$duration)
+      summary$Wear <- MPI$file_data$MeasurementDurationActual - sum(MPI$non_movement$non_wear$duration)
       summary$StillBouts <- sum(MPI$non_movement$still_bouts$duration)
     }
   } else if ((all(is.na(MPI))) && is.character(UBI_warning_message)) {
@@ -738,6 +811,7 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
       "MeasurementEndTimeISO" = NA,
       "SiteID" = NA,
       "StudyID" = NA,
+      "PeriodInfo" = NA,
       "ParticipantID" = NA,
       "TimeZone" = NA,
       "VoltsEnd" = NA,
@@ -745,13 +819,14 @@ single_summary <- function(input, path_type = c("BIN", "MPI")) {
       "WearLocationConfig" = NA,
       "Errors" = UBI_warning_message,
       "NumberDays" = NA,
-      "Transitions" = NA,
       "NonWear" = NA,
+      "Wear" = NA,
       "StillBouts" = NA
     )
   } else {
     summary <- NA
   }
+
   return(summary)
 }
 

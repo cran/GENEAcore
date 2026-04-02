@@ -10,7 +10,7 @@
 #' of Chebychev filter (default \code{c(0.5, 5)} Hz),
 #' passed to argument W of \code{\link[signal]{butter}} or \code{\link[signal]{cheby1}}.
 #' @param Rp the decibel level that the cheby filter takes, see \code{\link[signal]{cheby1}}.
-#' @param hysteresis The hysteresis applied after zero crossing. (default 100mg)
+#' @param step_hysteresis The hysteresis applied after zero crossing of the bandpass filtered y-axis signal.
 #' @param fun character vector naming functions by which to summarize steps.
 #' "count" is an internally implemented summarizing function that returns step count.
 #' @return Returns a vector with length fun.
@@ -30,7 +30,7 @@ step_counter <- function(step_data,
                          filter_order = 2,
                          boundaries = c(0.5, 5),
                          Rp = 3,
-                         hysteresis = 0.05,
+                         step_hysteresis = 0.05,
                          fun = c("GENEAcount", "mean", "sd", "stepdiff")) {
   if (missing(step_data)) {
     stop("data is missing")
@@ -70,12 +70,12 @@ step_counter <- function(step_data,
 
   if (samples > 0) {
     for (a in 1:samples) {
-      if ((filtered_data[a] > hysteresis) && (state < 0)) { # new step started
+      if ((filtered_data[a] > step_hysteresis) && (state < 0)) { # new step started
         state <- 1 # set the state
         cadence[length(cadence)] <- interval + 1 # write the step interval
         cadence[length(cadence) + 1] <- 0 # initialise to record the next step
         interval <- 0 # reset the step counter
-      } else if ((-1 * filtered_data[a] > hysteresis) && (state > 0)) { # hysteresis reset condition met
+      } else if ((-1 * filtered_data[a] > step_hysteresis) && (state > 0)) { # hysteresis reset condition met
         state <- -1 # reset the state
         interval <- interval + 1 # increment the interval
       } else {
@@ -147,31 +147,31 @@ stepCounter <- function(...) {
   step_counter(...)
 }
 
-## Write MPI file history for step counter function
-# Called in geneacore() after all steps (for epochs or events) have been calculated
-step_counter_history <- function(MPI_filepath,
-                                 sample_frequency = 100,
-                                 filter_order = 2,
-                                 boundaries = c(0.5, 5),
-                                 Rp = 3,
-                                 hysteresis = 0.05) {
-  if (file.exists(MPI_filepath)) {
-    MPI <- readRDS(MPI_filepath)
-
-    MPI$file_history <- rbind(
-      MPI$file_history,
-      paste0(
-        substr(Sys.time(), 0, 23),
-        " steps calculated ",
-        "(parameters: ",
-        "sample_frequency = ", sample_frequency, ", ",
-        "filter_order = ", filter_order, ", ",
-        "boundaries = ", paste(boundaries, collapse = "; "), ", ",
-        "Rp = ", Rp, ", ",
-        "hysteresis = ", hysteresis, ")"
-      )
-    )
-    saveRDS(MPI, MPI_filepath)
-  }
-  return(MPI)
-}
+# ## Write MPI file history for step counter function
+# # Called in geneacore() after all steps (for epochs or events) have been calculated
+# step_counter_history <- function(MPI_filepath,
+#                                  sample_frequency = 100,
+#                                  filter_order = 2,
+#                                  boundaries = c(0.5, 5),
+#                                  Rp = 3,
+#                                  step_hysteresis = 0.05) {
+#   if (file.exists(MPI_filepath)) {
+#     MPI <- readRDS(MPI_filepath)
+#
+#     MPI$file_history <- rbind(
+#       MPI$file_history,
+#       paste0(
+#         substr(Sys.time(), 0, 23),
+#         " steps calculated ",
+#         "(parameters: ",
+#         "sample_frequency = ", sample_frequency, ", ",
+#         "filter_order = ", filter_order, ", ",
+#         "boundaries = ", paste(boundaries, collapse = "; "), ", ",
+#         "Rp = ", Rp, ", ",
+#         "step_hysteresis = ", step_hysteresis, ")"
+#       )
+#     )
+#     saveRDS(MPI, MPI_filepath)
+#   }
+#   return(MPI)
+# }

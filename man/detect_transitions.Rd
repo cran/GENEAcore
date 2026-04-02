@@ -5,9 +5,7 @@
 \title{Detect Transitions}
 \usage{
 detect_transitions(
-  binfile,
-  binfile_path,
-  output_folder,
+  measurements,
   minimum_event_duration = 5,
   x_cpt_penalty = 18,
   y_cpt_penalty = 25,
@@ -16,37 +14,27 @@ detect_transitions(
 )
 }
 \arguments{
-\item{binfile}{Text lines read from an open connection to a bin file.}
-
-\item{binfile_path}{Path to the bin file to be processed.}
-
-\item{output_folder}{Path to the folder containing GENEAcore run outputs and Measurement Period Information (MPI) files.}
+\item{measurements}{The downsampled measurements to calculate changepoint transitions.}
 
 \item{minimum_event_duration}{The minimum interval between changepoint transitions.}
 
-\item{x_cpt_penalty}{The manual penalty value applied in the PELT changepoint algorithm for the x axis, see \code{\link[changepoint]{cpt.var}}.}
+\item{x_cpt_penalty}{The manual penalty value applied in the PELT changepoint
+algorithm for the x axis, see \code{\link[changepoint]{cpt.var}}.}
 
-\item{y_cpt_penalty}{The manual penalty value applied in the PELT changepoint algorithm for the y axis, see \code{\link[changepoint]{cpt.var}}.}
+\item{y_cpt_penalty}{The manual penalty value applied in the PELT changepoint
+algorithm for the y axis, see \code{\link[changepoint]{cpt.var}}.}
 
-\item{z_cpt_penalty}{The manual penalty value applied in the PELT changepoint algorithm for the z axis, see \code{\link[changepoint]{cpt.var}}.}
+\item{z_cpt_penalty}{The manual penalty value applied in the PELT changepoint
+algorithm for the z axis, see \code{\link[changepoint]{cpt.var}}.}
 
-\item{cut_time_24hr}{Time in 24h to split the days up by.}
+\item{cut_time_24hr}{Time in 24h to split days up by.}
 }
 \value{
-List of time, index and day number of each transition within the measurement period information.
+List of time and index of each transition.
 }
 \description{
 Detect Transitions
 }
 \details{
 Function to detect mean and variance changepoints in 1Hz acceleration data from a bin file.
-}
-\examples{
-binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
-con <- file(binfile_path, "r")
-binfile <- readLines(con, skipNul = TRUE)
-close(con)
-output_folder <- tempdir()
-MPI <- create_MPI(binfile, binfile_path, output_folder)
-MPI <- detect_transitions(binfile, binfile_path, output_folder)
 }

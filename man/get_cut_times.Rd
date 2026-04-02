@@ -7,7 +7,7 @@
 get_cut_times(cut_time_24hr, MPI)
 }
 \arguments{
-\item{cut_time_24hr}{Time in 24h to split the days up by.}
+\item{cut_time_24hr}{Time in 24h to split days up by.}
 
 \item{MPI}{Measurement Period Information.}
 }

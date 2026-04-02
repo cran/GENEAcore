@@ -9,9 +9,9 @@
 #' @param use_temp Allows auto-calibration to be run with and without
 #' temperature compensation.
 #' @param spherecrit The minimum required acceleration value for each axis in
-#'  both directions for auto-calibration to be reliable.
+#' both directions to ensure sufficient range of non-movement positions for auto-calibration to be reliable.
 #' @param maxiter The maximum number of sphere fit iterations attempted during
-#' auto-calibration.
+#' auto-calibration to converge.
 #' @param tol The limit of incremental sphere fit improvements before
 #' auto-calibration is considered complete.
 #' @return List of auto-calibration parameters within the measurement period
@@ -199,8 +199,8 @@ calc_autocalparams <- function(binfile,
 #' (x, y, z, Light, Button, Temp).
 #' @param cal_params Calibration parameters for acceleration and
 #' light from MPI.
-#' @param measurement_device Name of the measurement device used "GENEActiv 1.1"
-#' or "GENEActiv 1.2".
+#' @param measurement_device Name of the measurement device used "GENEActiv 1.1",
+#' "GENEActiv 1.2" or "GENEActiv 1.3".
 #' @param use_temp Allows auto-calibration to be run with and without
 #' temperature compensation.
 #' @return Data frame of calibrated sensor data.
@@ -232,11 +232,11 @@ apply_calibration <- function(sensor_data,
                               use_temp = TRUE) {
   # :DEV: - add checks that sensor_data & cal_params are in right format
   min_sensor_data_cols <- c("x", "y", "z", "Temp", "Light")
-  measurement_device_options <- c("GENEActiv 1.1", "GENEActiv 1.2")
+  measurement_device_options <- c("GENEActiv 1.1", "GENEActiv 1.2", "GENEActiv 1.3")
   data_format_correct <- TRUE
 
   if (!measurement_device %in% measurement_device_options) {
-    warning("Measurement device must be \"GENEActiv 1.1\" or \"GENEActiv 1.2\".")
+    warning("Measurement device must be \"GENEActiv 1.1\", \"GENEActiv 1.2\" or \"GENEActiv 1.3\".")
     data_format_correct <- FALSE
   }
 

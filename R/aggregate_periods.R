@@ -116,7 +116,7 @@ aggregate_events <- function(time_series,
 #' @param end_time Name of the column in events containing the end index of the events.
 #' @param fun Function to apply on aggregation, defaults to mean.
 #' @return Data frame of aggregated epochs or events.
-#' @export
+#' @keywords internal
 #' @importFrom stats aggregate
 aggregate_periods <- function(time_series,
                               measure = "AGSA",
@@ -203,7 +203,11 @@ aggregate_periods <- function(time_series,
   df <- df[df$period != 0, ] # drop event 0 as it represents "inter-event" times
 
   if (mode == EPOCH) { # exclude partial epochs
-    df <- df[1:floor(max_epoch_number), ]
+    if (floor(max_epoch_number) > 0) {
+      df <- df[1:floor(max_epoch_number), ]
+    } else {
+      df <- df[-1, ]
+    }
   }
 
   colnames(df)[1:2] <- c(time, ifelse(mode == EPOCH, "EpochNumber", "EventNumber"))
@@ -220,6 +224,7 @@ aggregate_periods <- function(time_series,
 #' @param end_time Name of the column in events containing the end index of the events.
 #' @param max_row_number Number of rows in the source vector the events describe
 #' @return List of mapped events.
+#' @keywords internal
 #' @export
 #' @examples
 #' events <- data.frame(

@@ -44,3 +44,4 @@ Data frame of aggregated epochs or events.
 \description{
 Generalised aggregation function generates distinct epochs or events outputs based on the initial parameters provided.
 }
+\keyword{internal}

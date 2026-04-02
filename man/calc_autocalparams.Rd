@@ -29,10 +29,10 @@ associated temperature in the form (x,y,z,temp).}
 temperature compensation.}
 
 \item{spherecrit}{The minimum required acceleration value for each axis in
-both directions for auto-calibration to be reliable.}
+both directions to ensure sufficient range of non-movement positions for auto-calibration to be reliable.}
 
 \item{maxiter}{The maximum number of sphere fit iterations attempted during
-auto-calibration.}
+auto-calibration to converge.}
 
 \item{tol}{The limit of incremental sphere fit improvements before
 auto-calibration is considered complete.}

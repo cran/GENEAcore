@@ -25,9 +25,8 @@ Identify and remove transitions shorter than the minimum event duration.
 \examples{
 changepoints <- data.frame(
   time = c(1677855218, 1677855598, 1677855661, 1677855679),
-  index = c(86019, 86399, 62, 80),
-  day = c(1, 1, 2, 2)
-)
-cut_times <- data.frame(time = 1677855600, index = 1, day = 2)
+  index = c(86019, 86399, 62, 80))
+cut_times <- data.frame(time = 1677855600, index = 1)
 transitions <- remove_short_transitions(changepoints, cut_times, 5)
 }
+\keyword{internal}

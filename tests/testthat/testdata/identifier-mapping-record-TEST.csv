@@ -1,0 +1,15 @@
+﻿Identifier Mapping Record,,
+Study,Test Study,
+Generated,26-Mar-26,
+,,
+Object Type,Object Identifier,Object Id
+Participant,P-A,a01234
+Participant,P-B,b01234
+Participant,P-C,c01234
+Participant,P-D,d01234
+Site,S1,site12341
+Site,S2,site12342
+Site,S3,site12343
+Study,TTT,testtesttest
+Visit,V0,v?!
+Visit,V00,v...

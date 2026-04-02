@@ -26,37 +26,39 @@ detect_nonmovement(
 \item{output_folder}{Path to the folder containing GENEAcore run outputs and Measurement Period Information (MPI) files.}
 
 \item{still_seconds}{The number of seconds included in the rolling standard
-deviation calculation for stillness to determine the shortest detection duration.}
+deviation calculation of non-movement from 1Hz downsampled data.}
 
 \item{sd_threshold}{The threshold applied to the rolling standard deviation
-of combined acceleration to determine stillness.}
+of mean acceleration standard deviation of 1Hz downsampled data to determine non-movement.}
 
 \item{temp_seconds}{The number of seconds included in the rolling temperature
-difference calculation or non-wear which also determines the shortest detection duration.}
+difference calculation for non-wear, which also determines the shortest detection duration.}
 
-\item{border_seconds}{The minimum number of seconds of a still event to be classed as a new bout.}
+\item{border_seconds}{The maximum number of seconds between non-movement
+events for them to be combined into the same period.}
 
-\item{long_still_seconds}{The minimum number of seconds of a still bout that is classed as non-wear.}
+\item{long_still_seconds}{The number of seconds for any single non-movement event
+beyond which the whole period is classed as non-wear.}
 
 \item{delta_temp_threshold}{The threshold applied to the rolling temperature difference to determine non-wear.}
 
-\item{posture_changes_max}{The maximum number of adjoining events that make up a single bout.}
+\item{posture_changes_max}{The maximum number of adjoining non-movement events that
+make up a single period of non-wear less than the maximum non-move duration.}
 
-\item{non_move_duration_max}{The maximum number of seconds of a still bout to be classed as non-movement.
-Still bouts with a duration longer than this number is automatically classed as non-wear.}
+\item{non_move_duration_max}{The number of seconds beyond which non-movement events are automatically classed as non-wear.}
 }
 \value{
-List of sphere points, non-movement bouts and non-wear events.
+List of sphere points, non-movement events and non-wear events.
 }
 \description{
 Detect Non-movement
 }
 \details{
-Function to detect non-movement bouts, non-wear events and points in a 1Hz
-downsampled bin file.
+Function to detect non-movement events, non-wear events and sphere points
+from a 1Hz downsampled bin file.
 }
 \examples{
-binfile_path <- system.file("extdata/20Hz_file.bin", package = "GENEAcore")
+binfile_path <- system.file("extdata/10Hz_calibration_file_20Nov25.bin", package = "GENEAcore")
 con <- file(binfile_path, "r")
 binfile <- readLines(con, skipNul = TRUE)
 close(con)

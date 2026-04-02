@@ -4,12 +4,14 @@
 \alias{binfile_summary}
 \title{Bin File Summary}
 \usage{
-binfile_summary(input, recursive = TRUE)
+binfile_summary(input, recursive = TRUE, identifier_mapping_record = NULL)
 }
 \arguments{
 \item{input}{Bin file path - single bin file or folder of bin files.}
 
 \item{recursive}{TRUE applies the operation to all nested elements.}
+
+\item{identifier_mapping_record}{File path of the exported identifier_mapping_record CSV file.}
 }
 \value{
 Data frame of bin file or MPI summary.
